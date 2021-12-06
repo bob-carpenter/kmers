@@ -19,10 +19,21 @@ of now the latest version is GRCh38.  Place that in a directory called
 and you should be good to execute the `read.py` program from the shell
 as
 
-```python
+```
 > cd kmers
 > python3 read.py
 ```
 
 It assembles the transcriptome as a sparse matrix then performs a
 sample matrix-vector multiply.
+
+## Documentation
+
+There is some documentation for the model that we are going to fit in
+the top level file `model.tex`.  To build that, do
+
+```
+> cd kmers
+> pdflatex model.tex
+> open model.pdf
+```
