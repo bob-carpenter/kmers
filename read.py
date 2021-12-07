@@ -2,6 +2,7 @@ from scipy.sparse import csr_matrix, save_npz
 import fastaparser   # GPLv3
 from collections import Counter
 import numpy as np
+from functools import lru_cache
 
 float_t = np.float32
 int_t = np.int32
@@ -28,15 +29,17 @@ base_id = {'A':0, 'C':1, 'G': 2, 'T':3}
 def base_to_code(b):
     return base_id[b]
 
+@lru_cache(maxsize=None)
 def kmer_to_id(kmer):
     id = 0
     for c in kmer:
         id = 4 * id + base_to_code(c)
     return id
 
+@lru_cache(maxsize=None)
 def valid_kmer(kmer):
     for c in kmer:
-        if (c != 'A' and c != 'C' and c != 'G' and c != 'T'):
+        if c not in 'ATCG':
             return False
     return True
 
@@ -55,14 +58,13 @@ with open(data_file) as fasta_file:
         iter = shred(seq.sequence, K)
         iter_filtered = filter(valid_kmer, iter)
 
-
         kmer_counts = Counter(iter_filtered)
         total_count = sum(kmer_counts.values())
         for (kmer, count) in kmer_counts.items():
             data[pos] = float_t(count / total_count)
             row_ind[pos] = int_t(kmer_to_id(kmer))
             col_ind[pos] = int_t(n)
-            pos = pos + 1
+            pos += 1
         n += 1
 
 print("resizing")
