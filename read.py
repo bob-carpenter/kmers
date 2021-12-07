@@ -54,7 +54,7 @@ with open(data_file) as fasta_file:
             continue
         iter = shred(seq.sequence, K)
         iter_filtered = filter(valid_kmer, iter)
-        ids =
+
 
         kmer_counts = Counter(iter_filtered)
         total_count = sum(kmer_counts.values())
