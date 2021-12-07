@@ -1,9 +1,8 @@
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, save_npz
 import fastaparser   # GPLv3
 from collections import Counter
-from collections import deque
-from itertools import islice
 import numpy as np
+
 float_t = np.float32
 int_t = np.int32
 
@@ -44,10 +43,10 @@ def valid_kmer(kmer):
 with open(data_file) as fasta_file:
     parser = fastaparser.Reader(fasta_file, parse_method='quick')
     n = 0
-    data = np.ndarray(max_nz, dtype=float_t)
-    row_ind = np.ndarray(max_nz, dtype=int_t)
-    col_ind = np.ndarray(max_nz, dtype=int_t)
-    pos = 1
+    data = np.zeros(max_nz, dtype=float_t)
+    row_ind = np.zeros(max_nz, dtype=int_t)
+    col_ind = np.zeros(max_nz, dtype=int_t)
+    pos = 0
     for seq in parser:
         if (n % 1000 == 0):
             print("n = ", n)
@@ -55,6 +54,8 @@ with open(data_file) as fasta_file:
             continue
         iter = shred(seq.sequence, K)
         iter_filtered = filter(valid_kmer, iter)
+        ids =
+
         kmer_counts = Counter(iter_filtered)
         total_count = sum(kmer_counts.values())
         for (kmer, count) in kmer_counts.items():
@@ -65,9 +66,9 @@ with open(data_file) as fasta_file:
         n += 1
 
 print("resizing")
-data.resize(n)
-row_ind.resize(n)
-col_ind.resize(n)
+data.resize(pos)
+row_ind.resize(pos)
+col_ind.resize(pos)
 
 print("building csr_matrix")
 xt = csr_matrix((data, (row_ind, col_ind)), shape = (M, n), dtype=float_t)
@@ -82,3 +83,6 @@ y_hat = xt.dot(theta)
 # print(y_hat)
 
 print("sum(xt * theta) =", sum(y_hat), " [should be 1.0]")
+
+print("saving .npz")
+save_npz(f'data/xt_{K}.npz', xt)
