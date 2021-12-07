@@ -4,22 +4,33 @@ from collections import Counter
 from collections import deque
 from itertools import islice
 import numpy as np
+float_t = np.float32
+int_t = np.int32
 
-K = 10
+data_file = "data/GRCh38_latest_rna.fna"
+print("fasta transcriptome file =", data_file)
+
+K = 5
+print("K =", K)
+
 M = 4**K
+print("M =", M)
+
+max_nz = 400 * 1000 * 1000
+print("maximum non-zeros =", max_nz)
 
 def shred(seq, K):
     N = len(seq)
     for n in range(0, N - K + 1):
         yield seq[n:n + K]
 
-BASE_ID_CODE = {'A':0, 'C':1, 'G': 2, 'T':3}
+base_id = {'A':0, 'C':1, 'G': 2, 'T':3}
 
 def base_to_code(b):
-    return BASE_ID_CODE[b]
+    return base_id[b]
 
 def kmer_to_id(kmer):
-    id = 0;
+    id = 0
     for c in kmer:
         id = 4 * id + base_to_code(c)
     return id
@@ -30,14 +41,12 @@ def valid_kmer(kmer):
             return False
     return True
 
-max_size = 400 * 1000 * 1000
-
-with open("data/GRCh38_latest_rna.fna") as fasta_file:
+with open(data_file) as fasta_file:
     parser = fastaparser.Reader(fasta_file, parse_method='quick')
     n = 0
-    data = np.ndarray(max_size, dtype=np.float32)
-    row_ind = np.ndarray(max_size, dtype=np.int32)
-    col_ind = np.ndarray(max_size, dtype=np.int32)
+    data = np.ndarray(max_nz, dtype=float_t)
+    row_ind = np.ndarray(max_nz, dtype=int_t)
+    col_ind = np.ndarray(max_nz, dtype=int_t)
     pos = 1
     for seq in parser:
         if (n % 1000 == 0):
@@ -49,9 +58,9 @@ with open("data/GRCh38_latest_rna.fna") as fasta_file:
         kmer_counts = Counter(iter_filtered)
         total_count = sum(kmer_counts.values())
         for (kmer, count) in kmer_counts.items():
-            data[pos] = np.float32(count / total_count)
-            row_ind[pos] = np.int32(kmer_to_id(kmer))
-            col_ind[pos] = np.int32(n)
+            data[pos] = float_t(count / total_count)
+            row_ind[pos] = int_t(kmer_to_id(kmer))
+            col_ind[pos] = int_t(n)
             pos = pos + 1
         n += 1
 
@@ -61,7 +70,7 @@ row_ind.resize(n)
 col_ind.resize(n)
 
 print("building csr_matrix")
-xt = csr_matrix((data, (row_ind, col_ind)), shape = (M, n), dtype=np.float32)
+xt = csr_matrix((data, (row_ind, col_ind)), shape = (M, n), dtype=float_t)
 
 
 # TESTING AFTER HERE
