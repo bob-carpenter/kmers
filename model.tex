@@ -8,6 +8,11 @@
 \author{Bob Carpenter}
 \date{\today}
 
+\usepackage[colorinlistoftodos,bordercolor=orange,backgroundcolor=orange!20,linecolor=orange,textsize=scriptsize]{todonotes}
+\newcommand{\rob}[1]{\todo[inline]{\textbf{Robert: }#1}}
+\newcommand{\guillaume}[1]{\todo[inline]{\textbf{Guillaume: }#1}}
+\newcommand{\aaron}[1]{\todo[inline]{\textbf{Felix: }#1}}
+
 \begin{document}
 
 \maketitle
@@ -17,6 +22,7 @@
   without the need to align the reads to the transcriptome by reducing
   the reads and reference transcripts to $K$-mers.}
 
+\rob{Maybe a diagram that schematizes the transform from RNA-seq to reads to k-mers into counts would help guide the introduction? It would also me!}
 \section{Bases and $K$-mers}
 
 The four \emph{DNA bases} are adenine (\texttt{A}),
@@ -29,7 +35,7 @@ A \emph{$K$-mer} is an $K$-tuple of bases,
 \[
   x = (x_1, \ldots, x_K),
   \ \textrm{where}
-  \ x_1, \ldots, x_k \in \mathbb{B}^K.
+  \ x_1, \ldots, x_k \in \mathbb{B}.
 \]
 The set of $K$-mers is
 \[
@@ -51,7 +57,8 @@ which may be of a different length,
 \]
 with $T_{g, 1:K_g} \in \mathbb{B}^*$.  In data structure terms, the
 transcriptome $T$ is a ragged array of bases.
-
+\rob{Whats $G$, and what does the notation $T_{g, 1:K_g} $ mean? I know matlab notation $T_{g: 1:K_g}$ is the  column elements between $1:K_g$ on thje $g$th row of $T$, but I don't know $g,$ $K_g$ or why it appears here.
+Also I don't know what multiset means :)}
 
 \section{RNA-seq data}
 
@@ -72,7 +79,7 @@ them on the transcriptome, so the data may be represented as
 \]
 Again, although not strictly necessary, we assume all sequences are
 the same length to simplify notation.
-
+\rob{I don't know what is meant by "a gap between transcipts" }
 
 \section{Shredding $K$-mers}
 
@@ -82,7 +89,7 @@ a sequence of $(N - K + 1)$ $K$-mers by
   x_{1:N} \ \mapsto \
   x_{1:K}, \ x_{2:K+1}, \ \ldots, \ x_{N-K+1:N}.
 \]
-For example,
+For example, shredding   \texttt{AACAC}  into $2$-mers gives
 \[
   \texttt{AACAC} \ \mapsto \
   \texttt{AA}, \ \texttt{AC}, \ \texttt{CA}, \ \texttt{AC}.
@@ -100,8 +107,9 @@ $y$ appears in the $N$-mer $x$.  Continuing the example above,
   \textrm{count}(\texttt{AACAC})(\texttt{CA}) & = & 1,
 \end{eqnarray*}
 and all other counts are zero.
+\rob{So  $\textrm{count}_K(X_n) $ is a vector in $\mathbb{B}^K$? }
 
-A complete set of RNA-seq data $X = X_1, X_2, \ldots, X_N$ may then be reduced to
+A complete set of RNA-seq data $X = X_1, X_2, \ldots, X_N$ may then be summarized by its
 $K$-mer counts by summing the counts of the individual reads $x_{n, 1:J}$
 \[
   \textrm{count}_K(X) = \sum_{n=1}^N \textrm{count}_K(X_n).
@@ -113,10 +121,11 @@ example, consider extracting 3-mers from a paired read.
   \texttt{ATCAG} / \texttt{CGCGC}
   \ \mapsto \
   \texttt{ATC}, \texttt{TCA}, \texttt{CAG},
-  \texttt{CGC}, \texttt{GCG}, \texttt{CGC},
+  \texttt{CGC}, \texttt{GCG}, \texttt{CGC}.
 \]
 Counts are defined for individual paired reads and a complete set of
 RNA-seq data as above.
+\rob{I don't understand this Paired-end RNA-seq part or why it makes sense to mix $k$-mers of the two pairs.}
 
 \section{Indexing $K$-mers}
 
@@ -172,7 +181,7 @@ In a transcriptome consisting of $G$ base sequences, the only
 parameter is a vector $\alpha \in \mathbb{R}^G$, representing
 intercepts in a multi-logit regression.  $\theta_g$ represents the
 relative abundance of sequence $g$ in the transcriptome.
-
+\rob{I don't understand this paragraph =D}
 \subsection{Parameterizing simplexes}
 
 A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
@@ -192,6 +201,8 @@ $\textrm{sum}(\textrm{softmax}(\alpha)) = 1$.
 As a function from $K$-vectors to $K$-simplexes, softmax is many to
 one, because adding a constant to each component of $\alpha$ leads to
 the same result,
+\rob{The softmax is  not injective since
+ }
 \[
   \textrm{softmax}(\alpha)
   = \textrm{softmax}(\alpha + \lambda \cdot \textbf{1}_K),
@@ -199,7 +210,8 @@ the same result,
 where $\lambda \in \mathbb{R}$ and $\textbf{1}_K$ is $K$-vector
 of ones.
 
-The function softmax0 defines a smooth, one-to-one mapping from
+\rob{We can however make the softmax function into a one-to-one mapping by ... extending.... restricting...}
+The  softmax0 function defines a smooth, one-to-one mapping from
 $\mathbb{R}^{K-1}$ to $K$-simplexes by
 \[
   \textrm{softmax0}(\beta) = \textrm{softmax}([0 \ \, \beta]).
@@ -214,12 +226,12 @@ relative to the fixed first element.
 A sequence $T_g$ in the transcriptome can be transformed into a
 $4^K$-simplex representing the probability of observing a given
 $K$-mer given a read of transcript $g$.  The entire transcriptome can
-then be converted to a $(4^K \times G)$-matrix $X$. where column $g$ is the
+then be converted to a $(4^K \times G)$-matrix $X$, where column $g$ is the
 simplex representing the probability of a $K$-mer being observed given
 that the read was from transcript $T_g$.
 
 \subsubsection{Uniform read location}
-
+\rob{At this point it's not clear to me why we are worried about the distribution of $K$-mers being uniform or not. Is it because we assume this at some point?}
 Even if the reads are distributed uniformly along a transcript, the
 distribution of $K$-mers will not be uniform because of edge effects
 and because $K$-mers may appear more than once if $K$ is small.
@@ -270,7 +282,7 @@ $K$-mer counts found in uniformly distributed reads of size $J$ is
   \textrm{count}_K(\textrm{count}_J(s))
   = \sum_{j = 0}^{4^J - 1} \textrm{count}_J(s)(j) \cdot \textrm{count}_K(j).
 \]
-In words, the result $\textrm{count}_K(\textrm{count}_J(s))$ is a
+In other words, the result $\textrm{count}_K(\textrm{count}_J(s))$ is a
 function from $K$-mer identifiers to their relative abundance in
 uniformly distributed $J$-gram reads over the sequence $s$.  The term
 $\textrm{count}_K(j)$ is a sparse vector mapping $K$-mers to their
