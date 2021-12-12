@@ -1,7 +1,7 @@
-# K-mers
+# kmerexpr
 
-This is a package for doing gene expression with k-mers. The basic
-code is in a top-level file `read.py` for now.
+`kmerexpr` is a Python package for estimating isoform expression with
+both the reads and transcriptomes represented as k-mer counts. 
 
 ## Data download
 
@@ -24,16 +24,36 @@ as
 > python3 read.py
 ```
 
-It assembles the transcriptome as a sparse matrix then performs a
-sample matrix-vector multiply.
+It assembles the transcriptome as a sparse matrix and then serializes
+it to a npz file.  
+
 
 ## Documentation
 
 There is some documentation for the model that we are going to fit in
-the top level file `model.tex`.  To build that, do
+the top level file `model.tex`.  To build the pdf, do
 
 ```
 > cd kmers
 > pdflatex model.tex
 > open model.pdf
 ```
+
+## Licensing
+
+The code in this repo is BSD-3 licensed and the doc is CC-BY ND 3.0
+licensed.
+
+
+## Dependencies
+
+### `scipy` / `numpy`
+
+Scipy and Numpy are BSD-3 licensed.
+
+### `fastaparser`
+
+This is GPLv3 licensed. If this approach works out, we'll replace that
+with a non-copylefted Fasta parser as the functionality we need is not
+that difficult to code.
+

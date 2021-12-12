@@ -1,14 +1,18 @@
-from scipy.sparse import csr_matrix, save_npz
-import fastaparser   # GPLv3
+from transcriptome_reader import transcriptom_to_x
+
+from scipy.sparse import csr_matrix, save_npz  # BSD-3
+import numpy as np                             # BSD-3
+import fastaparser                             # GPLv3
+
 from collections import Counter
-import numpy as np
 from functools import lru_cache
+
 
 float_t = np.float32
 int_t = np.int32
 
-data_file = "data/GRCh38_latest_rna.fna"
-print("fasta transcriptome file =", data_file)
+fasta_file = "data/GRCh38_latest_rna.fna"
+print("fasta transcriptome file =", fasta_file)
 
 K = 5
 print("K =", K)
@@ -43,7 +47,7 @@ def valid_kmer(kmer):
             return False
     return True
 
-with open(data_file) as fasta_file:
+with open(fasta_file) as fasta_file:
     parser = fastaparser.Reader(fasta_file, parse_method='quick')
     n = 0
     data = np.zeros(max_nz, dtype=float_t)
@@ -75,6 +79,9 @@ col_ind.resize(pos)
 print("building csr_matrix")
 xt = csr_matrix((data, (row_ind, col_ind)), shape = (M, n), dtype=float_t)
 
+print("saving .npz")
+save_npz(f'data/xt_{K}.npz', xt)
+
 
 # TESTING AFTER HERE
 rng = np.random.default_rng()
@@ -86,5 +93,3 @@ y_hat = xt.dot(theta)
 
 print("sum(xt * theta) =", sum(y_hat), " [should be 1.0]")
 
-print("saving .npz")
-save_npz(f'data/xt_{K}.npz', xt)
