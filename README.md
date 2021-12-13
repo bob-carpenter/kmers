@@ -12,6 +12,7 @@ create a model is
 import transcriptome_reader as tr
 import multinomial_model as mm
 
+K = 8  # size of k-mers to use
 ISO_FILE = <path to transcriptome file in fasta format>
 X_FILE = <path to save isoform to kmer matrix>
 tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
