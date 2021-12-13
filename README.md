@@ -3,6 +3,28 @@
 `kmerexpr` is a Python package for estimating isoform expression with
 both the reads and transcriptomes represented as k-mer counts. 
 
+## Basic usage
+
+Given a fasta formatted transcriptome in `tr_file.fasta` the way to
+create a model is
+
+```python
+import transcriptome_reader as tr
+import multinomial_model as mm
+
+ISO_FILE = <path to transcriptome file in fasta format>
+X_FILE = <path to save isoform to kmer matrix>
+tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
+y = <vector of observed reads>
+model = mm.multinomial_model(X_file, y)
+theta = <simplex of isoform expression>
+logp, grad = model.logp_grad(theta)
+```
+
+The resulting values of `logp` hold the function value and `grad`
+holds the gradient with respect to `theta`.
+
+
 ## Data download
 
 The fasta format of the human transcriptome is available as one of the
@@ -37,6 +59,16 @@ the top level file `model.tex`.  To build the pdf, do
 > cd kmers
 > pdflatex model.tex
 > open model.pdf
+```
+
+## Unit testing
+
+The `pytest`-based unit tests may be run from the top level as
+follows. 
+
+```
+> cd kmers
+> pytest
 ```
 
 ## Licensing
