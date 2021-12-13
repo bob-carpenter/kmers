@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import pytest
 from scipy.sparse import load_npz
 import transcriptome_reader as tr
@@ -11,6 +12,7 @@ def test_k1():
     assert 1 == 1
     tr.transcriptome_to_x(K1, ISO_FILE1, X_FILE1)
     x = load_npz(X_FILE1)
+    os.remove(X_FILE1)
     M, T = x.get_shape()
     assert M == 4**1
     assert T == 2
@@ -31,6 +33,7 @@ K2 = 2
 def test_k2():
     tr.transcriptome_to_x(K2, ISO_FILE2, X_FILE2)
     x = load_npz(X_FILE2)
+    os.remove(X_FILE2)
     M, T = x.get_shape()
     assert M == 4**2
     assert T == 3
@@ -44,7 +47,7 @@ def test_k2():
 def test_simplex():
     tr.transcriptome_to_x(K2, ISO_FILE2, X_FILE2)
     x = load_npz(X_FILE2)
-    x = load_npz(X_FILE2)
+    os.remove(X_FILE2)
     M, T = x.get_shape()
     rng = np.random.default_rng()
     theta = np.abs(rng.standard_normal(T, dtype=np.float32))
