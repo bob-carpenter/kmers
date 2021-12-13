@@ -16,13 +16,14 @@ ISO_FILE = <path to transcriptome file in fasta format>
 X_FILE = <path to save isoform to kmer matrix>
 tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
 y = <vector of observed reads>
-model = mm.multinomial_model(X_file, y)
+model = mm.multinomial_model(X_FILE, y)
 theta = <simplex of isoform expression>
 logp, grad = model.logp_grad(theta)
 ```
 
-The resulting values of `logp` hold the function value and `grad`
-holds the gradient with respect to `theta`.
+The resulting value is a tuple with `logp` assigned the value of the
+log probability density function at the simplex `theta` and `grad`
+assigned the gradient at `theta`.
 
 
 ## Data download
