@@ -1,11 +1,6 @@
-# @TODO(carpenter): replace fastaparser with non-copyleft package
-
-# external Libs
 from scipy.sparse import csr_matrix, save_npz  # BSD-3
 import numpy as np                             # BSD-3
 import fastaparser                             # GPLv3
-
-# built-in libs
 from collections import Counter
 from functools import lru_cache
 
@@ -33,11 +28,11 @@ def shred(seq, K):
         yield seq[n:n + K]
 
 def transcriptome_to_x(K, fasta_file, x_file, max_nz = 500 * 1000 * 1000, float_t = np.float32, int_t = np.int32):
+    print("K =", K)
     print("fasta file =", fasta_file)
     print("target x file =", x_file)
     print("float type =", float_t)
     print("int type =", int_t)
-    print("K =", K)
     M = 4**K
     print("M =", M)
     with open(fasta_file) as f:

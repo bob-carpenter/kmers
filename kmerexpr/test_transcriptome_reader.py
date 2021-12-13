@@ -5,12 +5,12 @@ from scipy.sparse import load_npz
 import transcriptome_reader as tr
 
 def test_k1():
-    ISO_FILE1 ='kmerexpr/test_data/test1.fsa'
-    X_FILE1 = "kmerexpr/test_data/x1_csr.npz"
+    ISO_FILE ='kmerexpr/test_data/test1.fsa'
+    X_FILE = "kmerexpr/test_data/x1_csr.npz"
     K1 = 1
-    tr.transcriptome_to_x(K1, ISO_FILE1, X_FILE1)
-    x = load_npz(X_FILE1)
-    os.remove(X_FILE1)
+    tr.transcriptome_to_x(K1, ISO_FILE, X_FILE)
+    x = load_npz(X_FILE)
+    os.remove(X_FILE)
     M, T = x.get_shape()
     assert M == 4**1
     assert T == 2
@@ -25,12 +25,12 @@ def test_k1():
     assert x[3, 1] == pytest.approx(0.20, 1e-6)
 
 def test_k2():
-    ISO_FILE2 ='kmerexpr/test_data/test2.fsa'
-    X_FILE2 = "kmerexpr/test_data/x2_csr.npz"
+    ISO_FILE ='kmerexpr/test_data/test2.fsa'
+    X_FILE = "kmerexpr/test_data/x2_csr.npz"
     K2 = 2
-    tr.transcriptome_to_x(K2, ISO_FILE2, X_FILE2)
-    x = load_npz(X_FILE2)
-    os.remove(X_FILE2)
+    tr.transcriptome_to_x(K2, ISO_FILE, X_FILE)
+    x = load_npz(X_FILE)
+    os.remove(X_FILE)
     M, T = x.get_shape()
     assert M == 4**2
     assert T == 3
@@ -43,12 +43,12 @@ def test_k2():
     assert x[15, 2] == 1.0
 
 def test_simplex():
-    ISO_FILE2 ='kmerexpr/test_data/test2.fsa'
-    X_FILE2 = "kmerexpr/test_data/x2_csr.npz"
+    ISO_FILE ='kmerexpr/test_data/test2.fsa'
+    X_FILE = "kmerexpr/test_data/x2_csr.npz"
     K2 = 2
-    tr.transcriptome_to_x(K2, ISO_FILE2, X_FILE2)
-    x = load_npz(X_FILE2)
-    os.remove(X_FILE2)
+    tr.transcriptome_to_x(K2, ISO_FILE, X_FILE)
+    x = load_npz(X_FILE)
+    os.remove(X_FILE)
     M, T = x.get_shape()
     rng = np.random.default_rng()
     theta = np.abs(rng.standard_normal(T, dtype=np.float32))
