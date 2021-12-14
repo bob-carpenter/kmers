@@ -1,7 +1,14 @@
 # Sample code automatically generated on 2021-12-11 17:57:52
 # by www.matrixcalculus.org from input: 
-#     d/dtheta y' * log(x * theta) - 1/18 * theta' * theta
-#       = x' * (y ./ (x * theta)) - 2/18 * theta
+#     d/dtheta y' * log(x * exp(theta) / sum(exp(theta))) - 1/18 * theta' * theta
+#       = 1 / sum(exp(theta))
+#         * (x' * (y ./ (1 / sum(exp(theta)) * x * exp(theta))))
+#         .* exp(theta)
+#       - 1 / sum(exp(theta)).^2
+#         * exp(theta)' * x'
+#         * (y ./ (1 / sum(exp(theta)) * x * exp(theta)))
+#         * exp(theta)
+#       - 2/18 * theta
 # where
 #     theta is a vector
 #     x is a matrix
@@ -18,22 +25,31 @@ class multinomial_model:
     """Multinomial model of k-mer reads.  
 
     The likelihood and prior are
-        y ~ multinomial(x * theta)
+        y ~ multinomial(x * softmax(theta))
         theta ~ normal(0, 3)
     where
         * y: M x 1 array of integer counts
         * x: M x T left stochastic matrix of kmer probabilities for isoform
-        * theta: T x 1 simplex of isoform expression
+        * theta: T x 1 vector of expression values
     with size constants
         * K: size of k-mer
         * M = 4^K: number of distinct k-mers
         * T: number of target isoforms
 
     All operations are on the log scale, with target log posterior
-        log p(theta | y) = y' * log(x * theta) - 1/18 * theta' * theta
+        log p(theta | y) = y' * log(x * softmax(theta)) - 1/18 * theta' * theta
+    where
+        softmax(theta) = exp(theta) / sum(exp(theta))
+
+    Because theta is T x 1, the likelihood itself is not identified as
+    theta + c yields the same density as theta for any constant c.  The
+    parameters are identified through the prior/penalty.
 
     The log posterior could be considered a penalized maximum likelihood with
-    a scaled L2 penalty 1/18 * ||theta||_2^2
+    a scaled L2 penalty 
+        penalty(theta) = 1/18 * ||theta||_2^2
+    The penalty will shrink estimates of theta toward zero, which has he effect
+    of making softmax(theta) more uniform.
 
     The constructor instantiates a model based on two arguments
     corresponding to x and y.  Because x is so large, it is loaded from
@@ -85,7 +101,12 @@ class multinomial_model:
         y_rows = dim[0]
         assert y_rows == x_rows
         assert theta_rows == x_cols
-        t_0 = (x).dot(theta)
-        functionValue = ((y).dot(np.log(t_0)) - ((theta).dot(theta) / 18))
-        gradient = ((x.T).dot((y / t_0)) - ((2 / 18) * theta))
+
+        t_0 = np.exp(theta)
+        t_1 = ((1 / np.sum(t_0)) * (x).dot(t_0))
+        t_2 = np.sum(t_0)
+        t_3 = (x.T).dot((y / t_1))
+        functionValue = ((y).dot(np.log(t_1)) - ((theta).dot(theta) / 18))
+        gradient = ((((1 / t_2) * (t_3 * t_0)) - ((1 / (t_2 ** 2)) * ((t_0).dot(t_3) * t_0))) - ((2 / 18) * theta))
+
         return functionValue, gradient

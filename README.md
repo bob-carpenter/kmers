@@ -48,7 +48,7 @@ isoform file.
 There is some documentation for the model that we are going to fit in
 the top level file `model.tex`.  To build the pdf, do
 
-```
+```console
 > cd kmers
 > pdflatex model.tex
 > open model.pdf
@@ -59,9 +59,18 @@ the top level file `model.tex`.  To build the pdf, do
 The `pytest`-based unit tests may be run from the top level as
 follows. 
 
-```
+```console
 > cd kmers
-> pytest
+> pytest -s
+```
+
+The `-s` option provides streaming output of any print statements
+within the code, which provide updates on progress of long-running
+processes. It's also possible to test a single function, e.g.,
+
+```console
+> cd kmers
+> pytest -s kmerexpr/test_multinomial_model.py
 ```
 
 This tests the fasta reader along with the serializer and deserializer

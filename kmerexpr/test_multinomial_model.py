@@ -25,6 +25,9 @@ def check_gradient(model = None, theta = None, tol = 1e-3):
     a pair consisting of the log density and its gradient evaluated at
     the specified simplex.
 
+    The only assumption on the density class here is that it operates on
+    unconstrained parameter values.
+
     Keyword arguments:
     model -- instance of multinomial_model defining log density
     theta -- simplex of parameters for isoform proportions
@@ -51,7 +54,7 @@ def test1():
     os.remove(X_FILE)
     assert model.T() == 3
     assert model.M() == 16
-    theta_test = softmax(np.random.normal(0, 1, model.T()))
+    theta_test = np.random.normal(0, 1, model.T())
     check_gradient(model, theta_test)
 
 def test_human_transcriptome():
@@ -68,7 +71,7 @@ def test_human_transcriptome():
     os.remove(X_FILE)
     assert model.T() == T
     assert model.M() == M
-    theta_test = softmax(np.random.normal(0, 1, T))
+    theta_test = np.random.normal(0, 1, T)
     print("checking gradient")
     check_gradient(model, theta_test)
 
