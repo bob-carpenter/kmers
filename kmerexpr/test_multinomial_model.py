@@ -26,9 +26,8 @@ def check_gradient(model = None, theta = None, tol = 1e-3):
     the specified simplex.
 
     Keyword arguments:
-    model -- instance of multinomial_model to evaluate
-    theta -- simplex of expected isoform proportions at which to
-    evaluate
+    model -- instance of multinomial_model defining log density
+    theta -- simplex of parameters for isoform proportions
     """
     t = 1E-6
     T = theta.shape[0]
@@ -58,7 +57,7 @@ def test1():
 def test_human_transcriptome():
     ISO_FILE ='data/GRCh38_latest_rna.fna'
     X_FILE = 'kmerexpr/test_data/xgrch38_csr.npz'
-    K = 10
+    K = 3  # make = 10 for full test
     M = 4**K
     T = 80791
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)

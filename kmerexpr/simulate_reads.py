@@ -19,8 +19,10 @@ def simulate_reads(isoform_file, rna_seq_file, N, L):
             pos += 1
     K = len(isoforms)
     print("isoforms found = ", K)
-    alpha = np.ones(K)
+    alpha = 0.5 * np.ones(K)
     theta = np.random.dirichlet(alpha)
+    print("theta[0:10] =", theta[0:10])
+    print("theta[K-10:K] =", theta[K-10:K])
     y = np.random.choice(K, size = N, replace=True, p = theta)
     with open(rna_seq_file, 'w') as out:
         for n in range(N):
@@ -33,11 +35,5 @@ def simulate_reads(isoform_file, rna_seq_file, N, L):
             out.write('\n')
             out.write(seq[start:start+L])
             out.write('\n')
-    
-if __name__ == "__main__":
-    ISO_FILE ='../data/GRCh38_latest_rna.fna'
-    RNA_SEQ_FILE = '../data/rna_seq_sim.fna'
-    N = 10_000_000
-    L = 50
-    simulate_reads(ISO_FILE, RNA_SEQ_FILE, N, L)
+            
 

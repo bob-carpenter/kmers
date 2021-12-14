@@ -43,7 +43,7 @@ def transcriptome_to_x(K, fasta_file, x_file, max_nz = 500 * 1000 * 1000, float_
         col_ind = np.zeros(max_nz, dtype=int_t)
         pos = 0
         for seq in parser:
-            if (n % 1000 == 0):
+            if (n % 5000 == 0):
                 print("seqs read = ", n)
             if "PREDICTED" in seq.header:
                 continue
