@@ -73,6 +73,7 @@ class multinomial_model:
         x_file -- path to file containing a serialized sparse,
         left-stochastic matrix in .npz format from scipy.sparse
         y -- vector of k-mer counts
+        N -- total number of k-mers
         """
         self.x = load_npz(x_file)
         self.y = y
@@ -108,9 +109,9 @@ class multinomial_model:
 
         sig = softmax(theta)
         xTsig = x.dot(sig)
-        t_3 = (x.T).dot((y / xTsig))
+        t_3 = (x.T).dot(y / xTsig)
         functionValue = y.dot(np.log(xTsig)) - (theta.dot(theta) / 18)
-        gradient = t_3 * sig - sig.dot(t_3) * sig - (2 / 18) * theta
+        gradient = t_3 * sig - self.N * sig - (2 / 18) * theta
         # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
