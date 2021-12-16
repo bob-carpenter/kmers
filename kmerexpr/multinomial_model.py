@@ -115,7 +115,7 @@ class multinomial_model:
         # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
-    def fit(self, theta=None):
+    def fit(self, theta=None, factr=100.0, pgtol=1e-10):
         func = lambda theta: -self.logp_grad(theta)[0]
         fprime = lambda theta: -self.logp_grad(theta)[1]
         theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)

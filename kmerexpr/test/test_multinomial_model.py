@@ -3,8 +3,7 @@ import transcriptome_reader as tr
 import numpy as np
 import os
 import pytest
-from scipy.sparse import load_npz
-from scipy.special import softmax
+from scipy import optimize
 
 
 def check_gradient(model=None, theta=None, tol=1e-3):
@@ -76,3 +75,25 @@ def test_human_transcriptome():
     theta_test = np.random.normal(0, 1, T)
     print("checking gradient")
     check_gradient(model, theta_test)
+
+
+def test_optimizer():
+    ISO_FILE = "kmerexpr/test_data/test4.fsa"
+    X_FILE = "kmerexpr/test_data/x4_csr.npz"
+    K = 2
+    tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
+    y_test = np.random.poisson(5, 4 ** K)
+    model = mm.multinomial_model(X_FILE, y_test)
+    os.remove(X_FILE)
+    theta0 = np.random.normal(0, 1, model.T())
+    # Get high precision solution
+    theta_sol, f_sol, dict_sol = model.fit(theta0, factr=1.0, pgtol=1e-14)
+    # Compare against CG
+    func = lambda theta: -model.logp_grad(theta)[0]
+    fprime = lambda theta: -model.logp_grad(theta)[1]
+    CGResult = optimize.minimize(
+        func, theta0, method="CG", jac=fprime, options={"gtol": 1e-14}
+    )
+    assert np.linalg.norm(CGResult.x - theta_sol) < 1e-04
+    assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-04
+    assert np.linalg.norm(dict_sol["grad"]) < 1e-04
