@@ -1,0 +1,16 @@
+ConfigParser==5.2.0
+cryptography==36.0.1
+Cython==0.29.25
+dl==0.1.0
+fastaparser==1.1
+HTMLParser==0.0.2
+ipaddr==2.2.0
+lxml==4.7.1
+numpy==1.18.2
+ordereddict==1.1
+protobuf==3.19.1
+pyOpenSSL==21.0.0
+pytest==5.4.1
+scipy==1.4.1
+# wincertstore==0.2.1
+# xmlrpclib==1.0.1

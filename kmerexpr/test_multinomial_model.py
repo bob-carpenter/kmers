@@ -62,7 +62,7 @@ def test_human_transcriptome():
     X_FILE = 'kmerexpr/test_data/xgrch38_csr.npz'
     K = 3  # make = 10 for full test
     M = 4**K
-    T = 80791
+    T = 80791  #Rob: It's coming out at 81456 in my test. Something wrong?
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     print("finished writing x to file")
     y_test = np.random.poisson(20, 4**K)

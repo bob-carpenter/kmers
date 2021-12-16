@@ -3,7 +3,7 @@ from rna_seq_reader import reads_to_y
 import pytest
 
 def test1():
-    RNA_SEQ_FILE = 'data/rna_seq_sim.fna'
+    RNA_SEQ_FILE = './data/rna_seq_sim.fna'
     print("RNA_SEQ_FILE =", RNA_SEQ_FILE)
     K = 5
     print("K =", K)

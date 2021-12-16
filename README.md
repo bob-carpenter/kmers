@@ -3,6 +3,22 @@
 `kmerexpr` is a Python package for estimating isoform expression with
 both the reads and transcriptomes represented as k-mer counts. 
 
+
+## Installation
+
+First ensure you're in a Python 3 virtual environment (see instructions below). 
+
+To install the package and requirements:
+```pip install -r kmerexpr/requirements.txt```
+
+### Setup a virtual environment
+Create a [Python 3 virtual environment](https://docs.python.org/3/tutorial/venv.html).
+
+For Unix or MacOS this can be done by executing: `source activate [env name]`
+1. `python3 -m venv kmer-env`
+2. `source activate kmer-env/bin/activate`
+
+
 ## Basic usage
 
 Given a fasta formatted transcriptome in `tr_file.fasta` the way to
