@@ -1,5 +1,5 @@
 # Sample code automatically generated on 2021-12-11 17:57:52
-# by www.matrixcalculus.org from input: 
+# by www.matrixcalculus.org from input:
 #     d/dtheta y' * log(x * exp(theta) / sum(exp(theta))) - 1/18 * theta' * theta
 #       = 1 / sum(exp(theta))
 #         * (x' * (y ./ (1 / sum(exp(theta)) * x * exp(theta))))
@@ -20,6 +20,9 @@
 
 import numpy as np
 from scipy.sparse import load_npz
+from scipy.special import softmax as softmax
+from scipy import optimize
+
 
 class multinomial_model:
     """Multinomial model of k-mer reads.  
@@ -62,8 +65,8 @@ class multinomial_model:
 
     :param y: vector of read counts
     """
-    
-    def __init__(self, x_file = None, y = None):
+
+    def __init__(self, x_file=None, y=None):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -73,14 +76,15 @@ class multinomial_model:
         """
         self.x = load_npz(x_file)
         self.y = y
+        self.N = np.sum(y)
 
     def M(self):
         return self.x.shape[0]
 
     def T(self):
         return self.x.shape[1]
-    
-    def logp_grad(self, theta = None):
+
+    def logp_grad(self, theta=None):
         """Return log density and its gradient evaluated at the
         specified simplex.
         
@@ -102,11 +106,17 @@ class multinomial_model:
         assert y_rows == x_rows
         assert theta_rows == x_cols
 
-        t_0 = np.exp(theta)
-        t_1 = ((1 / np.sum(t_0)) * (x).dot(t_0))
-        t_2 = np.sum(t_0)
-        t_3 = (x.T).dot((y / t_1))
-        functionValue = ((y).dot(np.log(t_1)) - ((theta).dot(theta) / 18))
-        gradient = ((((1 / t_2) * (t_3 * t_0)) - ((1 / (t_2 ** 2)) * ((t_0).dot(t_3) * t_0))) - ((2 / 18) * theta))
-
+        sig = softmax(theta)
+        xTsig = x.dot(sig)
+        t_3 = (x.T).dot((y / xTsig))
+        functionValue = y.dot(np.log(xTsig)) - (theta.dot(theta) / 18)
+        gradient = t_3 * sig - sig.dot(t_3) * sig - (2 / 18) * theta
+        # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
+
+    def fit(self, theta=None):
+        func = lambda theta: -self.logp_grad(theta)[0]
+        fprime = lambda theta: -self.logp_grad(theta)[1]
+        theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)
+        dict_sol["grad"] = -dict_sol["grad"]
+        return theta_sol, -f_sol, dict_sol

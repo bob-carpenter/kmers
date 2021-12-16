@@ -6,7 +6,8 @@ import pytest
 from scipy.sparse import load_npz
 from scipy.special import softmax
 
-def check_gradient(model = None, theta = None, tol = 1e-3):
+
+def check_gradient(model=None, theta=None, tol=1e-3):
     """Test gradient of model at specified argument using finite differences.
 
     Test is based on error in finite difference gradient
@@ -32,7 +33,7 @@ def check_gradient(model = None, theta = None, tol = 1e-3):
     model -- instance of multinomial_model defining log density
     theta -- simplex of parameters for isoform proportions
     """
-    t = 1E-6
+    t = 1e-6
     T = theta.shape[0]
     delta = np.random.randn(T)
     f1, _ = model.logp_grad(theta + t * delta)
@@ -43,13 +44,13 @@ def check_gradient(model = None, theta = None, tol = 1e-3):
     err = deriv_finite_diff - deriv_fun
     assert 0 == pytest.approx(0, tol)
 
-    
+
 def test1():
-    ISO_FILE ='kmerexpr/test_data/test4.fsa'
+    ISO_FILE = "kmerexpr/test_data/test4.fsa"
     X_FILE = "kmerexpr/test_data/x4_csr.npz"
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
-    y_test = np.random.poisson(5, 4**K)
+    y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
     assert model.T() == 3
@@ -57,15 +58,16 @@ def test1():
     theta_test = np.random.normal(0, 1, model.T())
     check_gradient(model, theta_test)
 
+
 def test_human_transcriptome():
-    ISO_FILE ='data/GRCh38_latest_rna.fna'
-    X_FILE = 'kmerexpr/test_data/xgrch38_csr.npz'
+    ISO_FILE = "data/GRCh38_latest_rna.fna"
+    X_FILE = "kmerexpr/test_data/xgrch38_csr.npz"
     K = 3  # make = 10 for full test
-    M = 4**K
-    T = 80791  #Rob: It's coming out at 81456 in my test. Something wrong?
+    M = 4 ** K
+    T = 80791  # Rob: It's coming out at 81456 in my test. Something wrong?
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     print("finished writing x to file")
-    y_test = np.random.poisson(20, 4**K)
+    y_test = np.random.poisson(20, 4 ** K)
     print("reading in model")
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
@@ -74,8 +76,3 @@ def test_human_transcriptome():
     theta_test = np.random.normal(0, 1, T)
     print("checking gradient")
     check_gradient(model, theta_test)
-
-    
-    
-    
-    

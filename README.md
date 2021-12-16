@@ -16,7 +16,7 @@ Create a [Python 3 virtual environment](https://docs.python.org/3/tutorial/venv.
 
 For Unix or MacOS this can be done by executing: `source activate [env name]`
 1. `python3 -m venv kmer-env`
-2. `source activate kmer-env/bin/activate`
+2. `source kmer-env/bin/activate`
 
 
 ## Basic usage
@@ -143,7 +143,6 @@ to return log density and gradient
     * bootstrap error bars for individual fit
     * iterate for different theta
 	* cross-validate to predict held-out data
-
 
 ## Licensing
 

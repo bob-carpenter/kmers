@@ -3,17 +3,18 @@ from collections import Counter
 from transcriptome_reader import valid_kmer, shred, kmer_to_id
 import fastaparser
 
-def reads_to_y(K, fasta_file, float_t = np.float32, int_t = np.int32):
+
+def reads_to_y(K, fasta_file, float_t=np.float32, int_t=np.int32):
     print("K =", K)
     print("fasta file =", fasta_file)
     print("float type =", float_t)
     print("int type =", int_t)
-    M = 4**K
+    M = 4 ** K
     print("M =", M)
     y = np.zeros(M)
     n = 0
     with open(fasta_file) as f:
-        parser = fastaparser.Reader(f, parse_method='quick')
+        parser = fastaparser.Reader(f, parse_method="quick")
         for seq in parser:
             if n % 10000 == 0:
                 print("seqs read =", n)
