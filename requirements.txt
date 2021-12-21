@@ -1,0 +1,8 @@
+cryptography==36.0.1
+fastaparser==1.1
+numpy==1.21.4
+protobuf==3.19.1
+pytest==6.2.5
+scipy==1.7.3
+
+

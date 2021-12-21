@@ -1,4 +1,3 @@
-from scipy.sparse import csr_matrix, save_npz  # BSD-3
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
 

@@ -1,9 +1,13 @@
-import multinomial_model as mm
-import transcriptome_reader as tr
+import kmerexpr.multinomial_model as mm
+import kmerexpr.transcriptome_reader as tr
 import numpy as np
 import os
 import pytest
 from scipy import optimize
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+DATA_PATH = os.path.join(HERE, "data")
 
 
 def check_gradient(model=None, theta=None, tol=1e-3):
@@ -45,8 +49,8 @@ def check_gradient(model=None, theta=None, tol=1e-3):
 
 
 def test1():
-    ISO_FILE = "kmerexpr/test_data/test4.fsa"
-    X_FILE = "kmerexpr/test_data/x4_csr.npz"
+    ISO_FILE = os.path.join(DATA_PATH, "test4.fsa")
+    X_FILE = os.path.join(DATA_PATH, "x4_csr.npz")
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)
@@ -59,8 +63,8 @@ def test1():
 
 
 def test_human_transcriptome():
-    ISO_FILE = "data/GRCh38_latest_rna.fna"
-    X_FILE = "kmerexpr/test_data/xgrch38_csr.npz"
+    ISO_FILE = os.path.join(ROOT, "data", "GRCh38_latest_rna.fna")
+    X_FILE = os.path.join(DATA_PATH, "xgrch38_csr.npz")
     K = 3  # make = 10 for full test
     M = 4 ** K
     T = 80791  # Rob: It's coming out at 81456 in my test. Something wrong?
@@ -78,8 +82,9 @@ def test_human_transcriptome():
 
 
 def test_optimizer():
-    ISO_FILE = "kmerexpr/test_data/test4.fsa"
-    X_FILE = "kmerexpr/test_data/x4_csr.npz"
+    ISO_FILE = os.path.join(DATA_PATH, "test4.fsa")
+    X_FILE = os.path.join(DATA_PATH, "x4_csr.npz")
+    print(X_FILE)
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)

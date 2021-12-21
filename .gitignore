@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Editor cruft
+.vscode/
+
+
+# don't check in data
+data/
+!test/data/

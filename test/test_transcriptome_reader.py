@@ -2,12 +2,16 @@ import numpy as np
 import os
 import pytest
 from scipy.sparse import load_npz
-import transcriptome_reader as tr
+from kmerexpr import transcriptome_reader as tr
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+DATA_PATH = os.path.join(HERE, "data")
 
 
 def test_k1():
-    ISO_FILE = "kmerexpr/test_data/test1.fsa"
-    X_FILE = "kmerexpr/test_data/x1_csr.npz"
+    ISO_FILE = os.path.join(DATA_PATH, "test1.fsa")
+    X_FILE = os.path.join(DATA_PATH, "x1_csr.npz")
     K1 = 1
     tr.transcriptome_to_x(K1, ISO_FILE, X_FILE)
     x = load_npz(X_FILE)
@@ -27,8 +31,8 @@ def test_k1():
 
 
 def test_k2():
-    ISO_FILE = "kmerexpr/test_data/test2.fsa"
-    X_FILE = "kmerexpr/test_data/x2_csr.npz"
+    ISO_FILE = os.path.join(DATA_PATH, "test2.fsa")
+    X_FILE = os.path.join(DATA_PATH, "x2_csr.npz")
     K2 = 2
     tr.transcriptome_to_x(K2, ISO_FILE, X_FILE)
     x = load_npz(X_FILE)
@@ -46,8 +50,8 @@ def test_k2():
 
 
 def test_simplex():
-    ISO_FILE = "kmerexpr/test_data/test2.fsa"
-    X_FILE = "kmerexpr/test_data/x2_csr.npz"
+    ISO_FILE = os.path.join(DATA_PATH, "test2.fsa")
+    X_FILE = os.path.join(DATA_PATH, "x2_csr.npz")
     K2 = 2
     tr.transcriptome_to_x(K2, ISO_FILE, X_FILE)
     x = load_npz(X_FILE)

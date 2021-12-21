@@ -1,10 +1,12 @@
-import numpy as np
-from rna_seq_reader import reads_to_y
-import pytest
+from kmerexpr.rna_seq_reader import reads_to_y
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 
 
 def test1():
-    RNA_SEQ_FILE = "./data/rna_seq_sim.fna"
+    RNA_SEQ_FILE = os.path.join(ROOT, 'data',"rna_seq_sim.fna")
     print("RNA_SEQ_FILE =", RNA_SEQ_FILE)
     K = 5
     print("K =", K)
