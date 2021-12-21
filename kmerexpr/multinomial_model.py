@@ -24,8 +24,9 @@ from scipy.special import softmax as softmax
 from scipy import optimize
 
 
+# BMW: Class names are usually done in CamelCase style
 class multinomial_model:
-    """Multinomial model of k-mer reads.  
+    """Multinomial model of k-mer reads.
 
     The likelihood and prior are
         y ~ multinomial(x * softmax(theta))
@@ -49,7 +50,7 @@ class multinomial_model:
     parameters are identified through the prior/penalty.
 
     The log posterior could be considered a penalized maximum likelihood with
-    a scaled L2 penalty 
+    a scaled L2 penalty
         penalty(theta) = 1/18 * ||theta||_2^2
     The penalty will shrink estimates of theta toward zero, which has he effect
     of making softmax(theta) more uniform.
@@ -88,7 +89,7 @@ class multinomial_model:
     def logp_grad(self, theta=None):
         """Return log density and its gradient evaluated at the
         specified simplex.
-        
+
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """

@@ -11,4 +11,5 @@ def test1():
     N = 10_000
     L = 50
     simulate_reads(ISO_FILE, RNA_SEQ_FILE, N, L)
+    # BMW: Test is a no op?
     assert 1 == 1

@@ -10,6 +10,7 @@ First ensure you're in a Python 3 virtual environment (see instructions below).
 
 To install the package and requirements:
 ```
+# editable installation for development
 pip install -e .
 ```
 

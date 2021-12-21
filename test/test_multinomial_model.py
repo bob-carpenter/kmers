@@ -45,6 +45,7 @@ def check_gradient(model=None, theta=None, tol=1e-3):
     deriv_finite_diff = (f1 - f2) / (2 * t)
     deriv_fun = np.tensordot(g, delta, axes=1)
     err = deriv_finite_diff - deriv_fun
+    # BMW: Just wanted to make sure we noted that this test is a no-op at the moment
     assert 0 == pytest.approx(0, tol)
 
 
