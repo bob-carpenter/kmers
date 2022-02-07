@@ -1,5 +1,6 @@
 \documentclass[11pt]{article}
 
+\usepackage{fullpage}
 \usepackage{hyperref}
 \usepackage{amssymb}
 \usepackage{amsmath}
@@ -55,10 +56,9 @@ which may be of a different length,
 \[
   T = T_{1}, \ldots, T_{G},
 \]
-with $T_{g, 1:K_g} \in \mathbb{B}^*$.  In data structure terms, the
+with $T_{g, 1:K_g} \in \mathbb{B}^*$ for $g =1, \ldots, G$ and $K_g$ is the length of the $g$th transcriptome.  In data structure terms, the
 transcriptome $T$ is a ragged array of bases.
-\rob{Whats $G$, and what does the notation $T_{g, 1:K_g} $ mean? I know matlab notation $T_{g: 1:K_g}$ is the  column elements between $1:K_g$ on thje $g$th row of $T$, but I don't know $g,$ $K_g$ or why it appears here.
-Also I don't know what multiset means :)}
+
 
 \section{RNA-seq data}
 
@@ -77,9 +77,9 @@ them on the transcriptome, so the data may be represented as
   P = P_1, \ldots, P_N, \ \textrm{where} \ P_n \in \mathbb{B}^J \times
   \mathbb{B}^J.
 \]
-Again, although not strictly necessary, we assume all sequences are
+Again, although not strictly necessary, we assume all sequences are of
 the same length to simplify notation.
-\rob{I don't know what is meant by "a gap between transcipts" }
+
 
 \section{Shredding $K$-mers}
 
@@ -125,7 +125,7 @@ example, consider extracting 3-mers from a paired read.
 \]
 Counts are defined for individual paired reads and a complete set of
 RNA-seq data as above.
-\rob{I don't understand this Paired-end RNA-seq part or why it makes sense to mix $k$-mers of the two pairs.}
+% \rob{I don't understand this Paired-end RNA-seq part or why it makes sense to mix $k$-mers of the two pairs.}
 
 \section{Indexing $K$-mers}
 
@@ -201,16 +201,15 @@ $\textrm{sum}(\textrm{softmax}(\alpha)) = 1$.
 As a function from $K$-vectors to $K$-simplexes, softmax is many to
 one, because adding a constant to each component of $\alpha$ leads to
 the same result,
-\rob{The softmax is  not injective since
- }
+
 \[
   \textrm{softmax}(\alpha)
   = \textrm{softmax}(\alpha + \lambda \cdot \textbf{1}_K),
 \]
 where $\lambda \in \mathbb{R}$ and $\textbf{1}_K$ is $K$-vector
-of ones.
+of ones. In other words,  softmax is  not an injective function.
 
-\rob{We can however make the softmax function into a one-to-one mapping by ... extending.... restricting...}
+\rob{We can however extend the softmax function into a one-to-one mapping by as follows}
 The  softmax0 function defines a smooth, one-to-one mapping from
 $\mathbb{R}^{K-1}$ to $K$-simplexes by
 \[
