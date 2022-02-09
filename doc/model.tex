@@ -23,7 +23,39 @@
   without the need to align the reads to the transcriptome by reducing
   the reads and reference transcripts to $K$-mers.}
 
-\rob{Maybe a diagram that schematizes the transform from RNA-seq to reads to k-mers into counts would help guide the introduction? It would also me!}
+
+\begin{figure}
+\centering
+\includegraphics[width=6cm]{transcipt-picture}
+\caption{Example of taking a transciptone, sampling a read, and breaking into $4$-mers and the resulting frequency matrix}
+\label{fig:transcipt-picture}
+\end{figure}
+
+
+\rob{Questions}
+\begin{enumerate}
+\item What will be our baseline of how ``well'' are method works? Compare it to the alignment method? Is there some convenient python code for this?
+\end{enumerate}
+\section{Introduction}
+
+Our goal is to develop a fast and principled approach to determining the relative abundance of transciptomes, from a set of reference transciptomes, are present in collected RNA-seq data. This in turn can be used to infer what genes are being expressed by the sampled RNA-seq. This task is normally accomplished by aligning reads from the RNA-seq data to the reference transcipts. But this alignment process is computationally intensive and has other issues? 
+
+Here we explore an approach that completely bypasses the need for aligning reads to the transciptome. Instead, we will take the reads from our RNA-seq data and break them into short $K$-mers, where $K$ is of the order of $10$ to $15.$ See Figure~\ref{fig:transcipt-picture} for an illustration on a single read. 
+Using a model of the process that transforms reads into $k$-mers, and the set of resulting $k$-mers, we are able to determine what is the most \emph{likely} set of reads and thus transciptomes that generated this set of $k$-mers.  
+
+To give some more detail, let $\Delta^p = \{ x \in \mathbb{R}^p \; : \; \sum_{j=1}^p x_j =1, \mbox{ and }  x_i \geq 0, \quad \mbox{for } i=1,\ldots, p\}$ be the $p$-dimensional simplex. Assume we have a set of $G \in \mathbb{N}$ reference transciptomes and a positive vector  $\theta \in \Delta^G$ where $\theta_j$  encodes how many samples of the $j$th transciptome are present in our RNA-seq data with respect to the total number of transciptomes. The transciptomes are then shredded into $K$-mers, of which there are a total of $4^K$ possible $K$-mers since there are four bases for DNA $(A, G, C, T)$. 
+Based on the process which shreds the transciptomes into $K$-mers, we will have a  matrix $X \in \mathbb{R}^{4^K \times G}$ that models the probability of getting a $k$-mer  by shredding a transciptome, that is
+\[ X_{k, g}  \; = \; \mathbb{P} (\mbox{ $k$th K-mer} \; | \; \mbox{$g$th transciptome }).\]
+We can then use this \emph{transciptome matrix} to map the ratio of transciptomes to a ratio of $k$-mers, that is for  $\theta \in \Delta^G$ we have
+\[   X :\theta \mapsto X\theta \in \Delta^K.\] 
+ This establishes the \emph{forward model}, that takes the proportion of transciptomes and returns the the proportion of $K$-mers. Yet what we have in practice is the proportion of $K$-mers. So instead we count the number of each $K$-mer and storing the count in a vector $y \in \mathbb{N}^{4^k}$ 
+and   \emph{infer} the proportion of transciptomes $\theta$ by solving $ X \theta  \approx y.$
+We do this by assuming that $y$ follows a multinomial distribution and then determining $\theta$ that solves the maximum loglikelihood.
+
+
+In the following section we formalize the above informal descriptions, provide numerics.....
+
+
 \section{Bases and $K$-mers}
 
 The four \emph{DNA bases} are adenine (\texttt{A}),
@@ -228,6 +260,7 @@ $K$-mer given a read of transcript $g$.  The entire transcriptome can
 then be converted to a $(4^K \times G)$-matrix $X$, where column $g$ is the
 simplex representing the probability of a $K$-mer being observed given
 that the read was from transcript $T_g$.
+\rob{Example so I understand. If $T_g = AACAC$ and we consider the $2$-mers  in their lexicographic order, then count$(AACAC) = (1, 2, 0, 0, 1, 0, 0, 0, \cdots 0)$. So in this case, is $X_{:g} = \mbox{count}(AACAC)/| \mbox{count}(AACAC)| $? In other words, it's the proportion of observed $k$-mers in $T_g$? }
 
 \subsubsection{Uniform read location}
 \rob{At this point it's not clear to me why we are worried about the distribution of $K$-mers being uniform or not. Is it because we assume this at some point?}
@@ -273,6 +306,7 @@ by composing count functions,
   = \frac{\textrm{count}_K\left(\textrm{count}_J(T_g)\right)}
          {\textrm{sum}\left(\textrm{count}_K\left(\textrm{count}_J(T_g)\right)\right)},
 \]
+\rob{Here I'm confused if this is in fact the definition of $X$ or a result of assuming uniformly distributed reads?}
 where the outer function $\textrm{count}_K$ is type lifted additively
 over functions as in the example.  Specifically, for a sequence $s$,
 and integers $K \leq J \leq \textrm{size}(s)$, the $4^K$-vector of
@@ -281,6 +315,8 @@ $K$-mer counts found in uniformly distributed reads of size $J$ is
   \textrm{count}_K(\textrm{count}_J(s))
   = \sum_{j = 0}^{4^J - 1} \textrm{count}_J(s)(j) \cdot \textrm{count}_K(j).
 \]
+\rob{Is $s$ a sequence of reads? 
+}
 In other words, the result $\textrm{count}_K(\textrm{count}_J(s))$ is a
 function from $K$-mer identifiers to their relative abundance in
 uniformly distributed $J$-gram reads over the sequence $s$.  The term
@@ -373,10 +409,14 @@ distribution,
 
 The posterior is determined by Bayes's rule up to an additive constant
 that does not depend on the parameters $\alpha$ as
-\[
-  \log p(\alpha \mid X, y) = \log p(y \mid X, \alpha) + \log p(\alpha) +
-  \textrm{const.}
-  \]
+\begin{align}
+  \log p(\alpha \mid X, y)& = \log p(y \mid X, \alpha) + \log p(\alpha) +
+  \textrm{const.} \nonumber \\
+  &= y^{\top} \cdot \log \left( x^{\top} \cdot \textrm{softmax}(\alpha) \right)
+          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.}, \nonumber
+\end{align} 
+ 
+
 
 \subsubsection{Posterior gradient}
 
