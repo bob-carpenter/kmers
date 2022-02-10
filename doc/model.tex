@@ -228,7 +228,7 @@ Suppose we have a transcriptome consisting of $G$ base sequences. Here we descri
 \rob{Re-write: Now we describe the statistical model which, given the proportion of }
 
 \subsection{Parameterizing simplexes}
-
+%\rob{This is a choice of parametrization that only need when implementing and computing the max log-likelihood. So move this further down?}
 %A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
 %such that $\textrm{sum}(\theta) = 1.$ 
  A vector $\alpha
@@ -458,7 +458,7 @@ that does not depend on the parameters $\alpha$ we have that
   &= y^{\top} \cdot \log \left( X^{\top} \cdot \textrm{softmax}(\alpha) \right)
           - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.} \nonumber
 \end{align} 
- 
+ where the logarithm is applied elementwise over the vector $ X^{\top} \cdot \textrm{softmax}(\alpha).$ 
 
 
 %\subsubsection{Posterior gradient}
