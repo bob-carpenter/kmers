@@ -35,6 +35,7 @@
 \rob{Questions}
 \begin{enumerate}
 \item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this?
+\item  To compare the two approaches of using simplex constraint or softmax, how can we determine which one works best? 
 \end{enumerate}
 \section{Introduction}
 
@@ -48,7 +49,7 @@ To give some more detail, let
  $$p-\mbox{simplex} := \{  x \in \mathbb{R}^p \; : \; \sum_{j=1}^p x_j =1, \mbox{ and }  x_i \geq 0, \quad \mbox{for } i=1,\ldots, p\}$$
  be the $p$-dimensional simplex. Assume we have a set of $G \in \mathbb{N}$ reference transciptomes and a positive vector  $\theta \in G\mbox{--simplex}$ where $\theta_j$  encodes the proportion of samples of the $j$th transciptome present in our data with respect to the total number of transciptomes. The transciptomes are then shredded into $K$-mers, of which there are a total of $4^K$ possible $K$-mers since there are four bases for DNA $(A, G, C, T)$. As such we can assign a number between $1$ and $4^K$ for all possible $K$-mers. 
 Based on the process which shreds the transciptomes into $K$-mers, we will have a  matrix $X \in \mathbb{R}^{4^K \times G}$ that models the probability of getting a certain $K$-mer  by shredding a transciptome, that is
-\[ X_{k, g}  \; = \; \mathbb{P} (\mbox{ $k$th K-mer} \; | \; \mbox{$g$th transciptome }).\]
+\[ X_{k, g}  \; = \; p (\mbox{ $k$th K-mer} \; \mid \; \mbox{$g$th transciptome }).\]
 \rob{Something wrong, it can't be ratio of $K$-mers, and should instead be the expected number of the $k$th $K$-mer? Or the count of $K$-mers?}
 We can then use this \emph{transciptome matrix} to map the ratio of transciptomes to a ratio of $k$-mers, that is for  $\theta \in \Delta^G$ we have
 \[   X :\theta \mapsto X\theta \in K\mbox{--simplex}.\] 
@@ -384,7 +385,9 @@ The observation $y$ is a sparse $4^K$-vector of $K$-mer counts
 corresponding to the shredded reads. That is
 
 $$ y =    \textrm{count}_K(\textrm{count}_J(s)) \; \in \; \mathbb{N}^{4^k}. $$
+This can be computed using....some technology thing ....
 %This, together with 
+
 \subsection{Transformed transcriptome matrix}
 The transcriptome is representing as a $4^K \times G$ matrix $X$ as
 described above.  The parameter $\alpha \in \mathbb{R}^G$ is a
@@ -402,16 +405,22 @@ $4^K$-simplexes, the product $X \cdot \textrm{softmax}(\alpha)$ is a
 $4^K$ simplex---it just reweights the gene-level $K$-mer expressions
 represented by the columns by the gene expressions represented by
 $\textrm{softmax}(\alpha)$.
-\rob{Not sure what abundances means here. Is it the proportion of $K$-mers?}
+\rob{This section should be moved and merged with section 6.2, or just removed. }
 
 \subsection{Sampling distribution}
 
-The sampling distribution $p(y \mid X, \alpha)$  for the observed
-$K$-mer counts $y$ given the transcriptome matrix $X$ and log odds
-expression simplex $\theta$ is defined to be multinomial,
+Since $y$ is a vector of counts of $K$-mers, we make the natural assumption that $y$ was generated 
+by a multinomial distribution with
 \[
   y \sim \textrm{multinomial}(X \cdot \textrm{softmax}(\alpha)).
 \]
+Here we have used  $X \cdot \textrm{softmax}(\alpha)$, that is the proportion of observed $K$-mers, as the probabilities of sampling a $K$-mer.
+
+%
+%The sampling distribution $p(y \mid X, \alpha)$  for the observed
+%$K$-mer counts $y$ given the transcriptome matrix $X$ and log odds
+%expression simplex $\theta$ is defined to be multinomial,
+
 
 
 \subsection{Prior}
@@ -435,27 +444,33 @@ distribution,
 
 \subsection{Posterior}
 
-The posterior is determined by Bayes's rule up to an additive constant
-that does not depend on the parameters $\alpha$ as
-\begin{align}
+Given our statistical model, our goal is now to find the most likely $\alpha \in \mathbb{R}^{G}$ given $y$ and $X$. That is, we now want to solve
+\begin{equation}
+\alpha^* \; \in \; \arg \max \log p(\alpha \; \mid \; X,y).
+\end{equation}
+
+Fortunately, this posterior distribution has a simple closed form that lends itself to optimization.
+ Indeed, by Bayes's rule up to an additive constant
+that does not depend on the parameters $\alpha$ we have that
+\begin{align}\label{eq:posterior}
   \log p(\alpha \mid X, y)& = \log p(y \mid X, \alpha) + \log p(\alpha) +
-  \textrm{const.} \nonumber \\
-  &= y^{\top} \cdot \log \left( x^{\top} \cdot \textrm{softmax}(\alpha) \right)
-          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.}, \nonumber
+  \textrm{const.}  \\
+  &= y^{\top} \cdot \log \left( X^{\top} \cdot \textrm{softmax}(\alpha) \right)
+          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.} \nonumber
 \end{align} 
  
 
 
-\subsubsection{Posterior gradient}
-
-Efficient maximum penalized likelihood estimation and full Bayesian inference
-require evaluating gradients of the posterior with respect to the parameters
-$\alpha$.  The gradient is\footnote{The derivative is easy to work out
+%\subsubsection{Posterior gradient}
+We can also efficiently compute the gradient\footnote{The derivative is easy to work out
   by passing \url{matrixcalculus.org} the query
   \begin{center}\texttt{y' * log
 (X * exp(a) / sum(exp(a))) - a' * a / (2 * lambda)}\end{center}
-and then simplifying using $\textrm{softmax}$.}
-%
+and then simplifying using $\textrm{softmax}$.} of posterior using 
+%Efficient maximum penalized likelihood estimation and full Bayesian inference
+%require evaluating gradients of the posterior with respect to the parameters
+%$\alpha$.  The gradient is
+%%
 \[
   \begin{array}{l}
   \nabla\!_{\alpha} \, \log p(\alpha \mid X, y) + \log p(\alpha)
@@ -471,10 +486,24 @@ where
   t = X^{\top}\! \cdot (y \oslash (X \cdot \textrm{softmax}(\alpha)))
 \]
 and $\odot$ represents elementwise multiplication and $\oslash$
-elementwise division.
+elementwise division. 
+
+
+\section{Alternative Representation}
+
+Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead use a constraint and solve
+
+\begin{align}
+\theta^* \; \in \; \arg \max_{\theta \in G\mbox{--simplex}}  \log p(\theta \mid X, y) &= y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
+         +\log p(\theta)+\textrm{const.} \label{eq:posterior-const}
+\end{align} 
+As for the prior $p(\theta)$, since $\theta$ is in the simplex, we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
+
+The advantage of~\eqref{eq:posterior-const} is that, with a strongly convex prior, the resulting optimization problem is strongly convex and smooth, and thus can be provenly solve with L-BFGS.
 
 \section{Estimating expression}
 
+\rob{Are all these alternative approaches to maximizing the posterior of $\alpha$?}
 \subsection{Bayesian posterior mean estimate}
 
 The Bayesian \emph{posterior mean estimate} is the parameter's
@@ -506,7 +535,7 @@ MCMC down to less than a tenth of the posterior standard deviation of
 $\alpha$.
 
 \subsection{Maximum a posteriori estimate}
-
+\rob{Why are we mentioning this?}
 The \emph{max a posteriori} (MAP) estimate for $\alpha$ is given by
 choosing the parameter value $\alpha^*$ that maximizes the posterior
 density,
