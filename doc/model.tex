@@ -34,27 +34,35 @@
 
 \rob{Questions}
 \begin{enumerate}
-\item What will be our baseline of how ``well'' are method works? Compare it to the alignment method? Is there some convenient python code for this?
+\item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this?
 \end{enumerate}
 \section{Introduction}
 
-Our goal is to develop a fast and principled approach to determining the relative abundance of transciptomes, from a set of reference transciptomes, are present in collected RNA-seq data. This in turn can be used to infer what genes are being expressed by the sampled RNA-seq. This task is normally accomplished by aligning reads from the RNA-seq data to the reference transcipts. But this alignment process is computationally intensive and has other issues? 
+\rob{I'm confusing terminology around transcriptome, sequence isoforms and reads. Do we have multiple transciptomes or one transciptome? By reference transciptome, is that the same thing as the isoforms?  }
+Our goal is to develop a fast and principled approach to determining the proportion of transciptomes, from a set of reference transciptomes, that are present in collected RNA-seq data. This in turn can be used to infer what genes are being expressed by the sampled RNA-seq. This task is normally accomplished by aligning reads from the RNA-seq data to the reference transciptomes. But this alignment process is computationally intensive and has other issues? 
 
-Here we explore an approach that completely bypasses the need for aligning reads to the transciptome. Instead, we will take the reads from our RNA-seq data and break them into short $K$-mers, where $K$ is of the order of $10$ to $15.$ See Figure~\ref{fig:transcipt-picture} for an illustration on a single read. 
-Using a model of the process that transforms reads into $k$-mers, and the set of resulting $k$-mers, we are able to determine what is the most \emph{likely} set of reads and thus transciptomes that generated this set of $k$-mers.  
+Here we explore an approach that completely bypasses the need for aligning reads to the transciptome. Instead, we will take the reads from our RNA-seq data and break them into short $K$-mers, that is sequences of length $K$ where $K$ is of the order of $10$ to $15.$ See Figure~\ref{fig:transcipt-picture} for an illustration on a single read. 
+Using a model of the process that transforms reads into $K$-mers, and the set of resulting $K$-mers, we are able to determine what is the most \emph{likely} set of reads and thus transciptomes that generated this set of $K$-mers.  
 
-To give some more detail, let $\Delta^p = \{ x \in \mathbb{R}^p \; : \; \sum_{j=1}^p x_j =1, \mbox{ and }  x_i \geq 0, \quad \mbox{for } i=1,\ldots, p\}$ be the $p$-dimensional simplex. Assume we have a set of $G \in \mathbb{N}$ reference transciptomes and a positive vector  $\theta \in \Delta^G$ where $\theta_j$  encodes how many samples of the $j$th transciptome are present in our RNA-seq data with respect to the total number of transciptomes. The transciptomes are then shredded into $K$-mers, of which there are a total of $4^K$ possible $K$-mers since there are four bases for DNA $(A, G, C, T)$. 
-Based on the process which shreds the transciptomes into $K$-mers, we will have a  matrix $X \in \mathbb{R}^{4^K \times G}$ that models the probability of getting a $k$-mer  by shredding a transciptome, that is
+To give some more detail, let
+ $$p-\mbox{simplex} := \{  x \in \mathbb{R}^p \; : \; \sum_{j=1}^p x_j =1, \mbox{ and }  x_i \geq 0, \quad \mbox{for } i=1,\ldots, p\}$$
+ be the $p$-dimensional simplex. Assume we have a set of $G \in \mathbb{N}$ reference transciptomes and a positive vector  $\theta \in G\mbox{--simplex}$ where $\theta_j$  encodes the proportion of samples of the $j$th transciptome present in our data with respect to the total number of transciptomes. The transciptomes are then shredded into $K$-mers, of which there are a total of $4^K$ possible $K$-mers since there are four bases for DNA $(A, G, C, T)$. As such we can assign a number between $1$ and $4^K$ for all possible $K$-mers. 
+Based on the process which shreds the transciptomes into $K$-mers, we will have a  matrix $X \in \mathbb{R}^{4^K \times G}$ that models the probability of getting a certain $K$-mer  by shredding a transciptome, that is
 \[ X_{k, g}  \; = \; \mathbb{P} (\mbox{ $k$th K-mer} \; | \; \mbox{$g$th transciptome }).\]
+\rob{Something wrong, it can't be ratio of $K$-mers, and should instead be the expected number of the $k$th $K$-mer? Or the count of $K$-mers?}
 We can then use this \emph{transciptome matrix} to map the ratio of transciptomes to a ratio of $k$-mers, that is for  $\theta \in \Delta^G$ we have
-\[   X :\theta \mapsto X\theta \in \Delta^K.\] 
- This establishes the \emph{forward model}, that takes the proportion of transciptomes and returns the the proportion of $K$-mers. Yet what we have in practice is the proportion of $K$-mers. So instead we count the number of each $K$-mer and storing the count in a vector $y \in \mathbb{N}^{4^k}$ 
-and   \emph{infer} the proportion of transciptomes $\theta$ by solving $ X \theta  \approx y.$
-We do this by assuming that $y$ follows a multinomial distribution and then determining $\theta$ that solves the maximum loglikelihood.
+\[   X :\theta \mapsto X\theta \in K\mbox{--simplex}.\] 
+
+ This establishes the \emph{forward model}, that takes the proportion of transciptomes and returns the the proportion of $K$-mers. Yet what we have in practice is the proportion of $K$-mers. So instead we count the number of each $K$-mer and store this count in a vector $y \in \mathbb{N}^{4^k}$.
+We then assume that  $y$ follows a multinomial distribution and then determining $\theta$ that solves the maximum loglikelihood, that is we find $\theta^*$ such that
+\[\theta^* \; \in \ ; \arg\max_{\theta \in  G\mbox{-simplex}} \log(\mathbb{P}(\theta \; | \; X, y)).\]
+  Thus we are able to compute the most likely proportion of transcipts by observing the count of the $K$-mers, and building a matrix $X$ that maps from proportion of transcipts to proportion of $K$-mers.
 
 
 In the following section we formalize the above informal descriptions, provide numerics.....
 
+
+   \rob{Can we say something like $ X \theta  \approx \frac{y}{\mbox{sum}(y)}$? }
 
 \section{Bases and $K$-mers}
 
@@ -113,56 +121,14 @@ Again, although not strictly necessary, we assume all sequences are of
 the same length to simplify notation.
 
 
-\section{Shredding $K$-mers}
-
-Suppose $K \leq N$.  Then the $N$-mer $x_{1:N}$ can be shredded into
-a sequence of $(N - K + 1)$ $K$-mers by
-\[
-  x_{1:N} \ \mapsto \
-  x_{1:K}, \ x_{2:K+1}, \ \ldots, \ x_{N-K+1:N}.
-\]
-For example, shredding   \texttt{AACAC}  into $2$-mers gives
-\[
-  \texttt{AACAC} \ \mapsto \
-  \texttt{AA}, \ \texttt{AC}, \ \texttt{CA}, \ \texttt{AC}.
-\]
-A sequence (or multiset) of $K$-mers may be summarized with a function
-$\textrm{count}_K:\mathbb{B}^* \rightarrow \mathbb{B}^K \rightarrow
-\mathbb{N}$, where
-$\textrm{count}_K(x)(y)$ is the number of times the $K$-mer
-$y$ appears in the $N$-mer $x$.  Continuing the example above,
-\begin{eqnarray*}
-  \textrm{count}(\texttt{AACAC})(\texttt{AA}) & = & 1,
-  \\
-  \textrm{count}(\texttt{AACAC})(\texttt{AC}) & = & 2,
-  \\
-  \textrm{count}(\texttt{AACAC})(\texttt{CA}) & = & 1,
-\end{eqnarray*}
-and all other counts are zero.
+\section{Shredding, indexing and counting $K$-mers}
 
 
-A complete set of RNA-seq data $X = X_1, X_2, \ldots, X_N$ may then be summarized by its
-$K$-mer counts by summing the counts of the individual reads $x_{n, 1:J}$
-\[
-  \textrm{count}_K(X) = \sum_{n=1}^N \textrm{count}_K(X_n).
-\]
 
-Paired-end RNA-seq data can be shredded elementwise.  For
-example, consider extracting 3-mers from a paired read.
-\[
-  \texttt{ATCAG} / \texttt{CGCGC}
-  \ \mapsto \
-  \texttt{ATC}, \texttt{TCA}, \texttt{CAG},
-  \texttt{CGC}, \texttt{GCG}, \texttt{CGC}.
-\]
-Counts are defined for individual paired reads and a complete set of
-RNA-seq data as above.
-% \rob{I don't understand this Paired-end RNA-seq part or why it makes sense to mix $k$-mers of the two pairs.}
-
-\section{Indexing $K$-mers}
-
-Define a bijection from the set of $K$-mers, $\mathbb{B}^K$, to the
-first $4^K$ counting numbers, $\{ 0, 1, \ldots 4^K-1 \}$,
+\subsection{Indexing}
+Since there are $4^K$ possible $K$-mers, we can 
+define a bijection from the set of $K$-mers, $\mathbb{B}^K$, to the
+g numbers, $\{ 0, 1, \ldots 4^K-1 \}$,
 by treating each base as a digit in base 4 and reading the
 $K$-mer as a number.  Following alphabetic order, let
 \[
@@ -201,29 +167,76 @@ a hashing scheme would be required or a lossy Bloom filter in order to
 store approximate counts.  The memory used by hashing will be
 proportional to the number of unique $K$-mers in the RNA-seq data.
 
-Therefore,
-$\textrm{count}_K(x)$ is a (sparse) $4^K$-vector where the
-$K$-mers are indexed in lexicographic order (i.e., read as base 4
-numbers).
+\subsection{Shredding}
+Suppose $K \leq N$.  Then the $N$-mer $x_{1:N}$ can be shredded into
+a sequence of $(N - K + 1)$ $K$-mers by
+\[
+  x_{1:N} \ \mapsto \
+  x_{1:K}, \ x_{2:K+1}, \ \ldots, \ x_{N-K+1:N}.
+\]
+For example, shredding   \texttt{AACAC}  into $2$-mers gives
+\[
+  \texttt{AACAC} \ \mapsto \
+  \texttt{AA}, \ \texttt{AC}, \ \texttt{CA}, \ \texttt{AC}.
+\]
+
+
+\subsection{Counting}
+A set of $K$-mers may be summarized with a function
+$\textrm{count}_K:\mathbb{B}^* \rightarrow \mathbb{B}^K \rightarrow
+\mathbb{N}$, where
+$\textrm{count}_K(x)(y)$ is the number of times the $K$-mer
+$y$ appears in the $N$-mer $x$.  Continuing the example above,
+\begin{eqnarray*}
+  \textrm{count}_2(\texttt{AACAC})(\texttt{AA}) & = & 1,
+  \\
+  \textrm{count}_2(\texttt{AACAC})(\texttt{AC}) & = & 2,
+  \\
+  \textrm{count}_2(\texttt{AACAC})(\texttt{CA}) & = & 1,
+\end{eqnarray*}
+and all other counts are zero. The function $ \textrm{count}_2(\texttt{AACAC}) $ can also be interpreted as a sparse vector in $\mathbb{N}^{4^k}$ with only three non-zeros elements in the indices that correspond to the $2$-mers \texttt{AA}, \texttt{AC} and \texttt{CA}.
+
+A complete set of RNA-seq data $X = X_1, X_2, \ldots, X_N$ may then be summarized by its
+$K$-mer counts by summing the counts of the individual reads $x_{n, 1:J}$
+\[
+  \textrm{count}_K(X) = \sum_{n=1}^N \textrm{count}_K(X_n) \in \mathbb{N}^{4^k}
+\]
+\rob{Are these $X_i$'s different Reads? If not, what is the relation to Reads? Also, $X$ is reserved for Transciptome matrix.}
+\rob{Note to remove the below? Of ``footnote'' it.}
+Paired-end RNA-seq data can be shredded elementwise.  For
+example, consider extracting 3-mers from a paired read.
+\[
+  \texttt{ATCAG} / \texttt{CGCGC}
+  \ \mapsto \
+  \texttt{ATC}, \texttt{TCA}, \texttt{CAG},
+  \texttt{CGC}, \texttt{GCG}, \texttt{CGC}.
+\]
+Counts are defined for individual paired reads and a complete set of
+RNA-seq data as above.
+% \rob{I don't understand this Paired-end RNA-seq part or why it makes sense to mix $k$-mers of the two pairs.}
+
+
 
 
 \section{Statistical model}
+Suppose we have a transcriptome consisting of $G$ base sequences. Here we describe the statistical model which maps the proportion $\theta \in G$--simplex of base sequence in the transciptome to the count of $K$-mers.
+%In a transcriptome consisting of $G$ base sequences, the only
+%parameter is a vector $\alpha \in \mathbb{R}^G$, representing
+%intercepts in a multi-logit regression.  $\theta_g$ represents the
+%relative abundance of sequence $g$ in the transcriptome.
+\rob{Re-write: Now we describe the statistical model which, given the proportion of }
 
-In a transcriptome consisting of $G$ base sequences, the only
-parameter is a vector $\alpha \in \mathbb{R}^G$, representing
-intercepts in a multi-logit regression.  $\theta_g$ represents the
-relative abundance of sequence $g$ in the transcriptome.
-\rob{I don't understand this paragraph =D}
 \subsection{Parameterizing simplexes}
 
-A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
-such that $\textrm{sum}(\theta) = 1.$  An arbitrary $K$-vector $\alpha
-\in \mathbb{R}^K$ can be transformed to a simplex using the softmax
+%A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
+%such that $\textrm{sum}(\theta) = 1.$ 
+ A vector $\alpha
+\in \mathbb{R}^K$ can be mapped to the simplex using the softmax
 function,
 \[
   \textrm{softmax}(\alpha)
   = \frac{\exp(\alpha)}
-         {\textrm{sum}(\exp(\alpha))},
+         {\textrm{sum}(\exp(\alpha))} \in K\mbox{--simplex},
 \]
 where $\exp(\alpha)$ is defined elementwise.   By construction,
 $\textrm{softmax}(\alpha)$ is a simplex, because
@@ -241,17 +254,20 @@ the same result,
 where $\lambda \in \mathbb{R}$ and $\textbf{1}_K$ is $K$-vector
 of ones. In other words,  softmax is  not an injective function.
 
-\rob{We can however extend the softmax function into a one-to-one mapping by as follows}
+We can however extend the softmax function into a one-to-one mapping  as follows.
 The  softmax0 function defines a smooth, one-to-one mapping from
 $\mathbb{R}^{K-1}$ to $K$-simplexes by
 \[
   \textrm{softmax0}(\beta) = \textrm{softmax}([0 \ \, \beta]).
 \]
 That is, a zero element is appended to the front of the $(K-1)$-vector.
-This changes the interpretation of the elements from being only
-determined relative to each other to having their scale defined
-relative to the fixed first element.
-
+The $\textrm{softmax0}(\beta) =\theta$ function is one-to-one since we  now  $\theta_1 = (\textrm{sum}(\exp(\alpha))^{-1}$ and thus we have that
+$$ \alpha_i = \ln\left(\frac{\theta_i}{\theta_0} \right), \quad \mbox{for }i=1,\ldots, K. $$.
+Thus this fixed first element can be used to determine the inputs. 
+%changes the interpretation of the elements from being only
+%determined relative to each other to having their scale defined
+%relative to the fixed first element.
+\rob{Just double checking, we actually use the $ \textrm{softmax0} $ function in our code?}
 \subsection{Transcriptome matrix}
 
 A sequence $T_g$ in the transcriptome can be transformed into a
@@ -260,10 +276,13 @@ $K$-mer given a read of transcript $g$.  The entire transcriptome can
 then be converted to a $(4^K \times G)$-matrix $X$, where column $g$ is the
 simplex representing the probability of a $K$-mer being observed given
 that the read was from transcript $T_g$.
-\rob{Example so I understand. If $T_g = AACAC$ and we consider the $2$-mers  in their lexicographic order, then count$(AACAC) = (1, 2, 0, 0, 1, 0, 0, 0, \cdots 0)$. So in this case, is $X_{:g} = \mbox{count}(AACAC)/| \mbox{count}(AACAC)| $? In other words, it's the proportion of observed $k$-mers in $T_g$? }
+%\rob{Example so I understand. If $T_g = AACAC$ and we consider the $2$-mers  in their lexicographic order, then count$(AACAC) = (1, 2, 0, 0, 1, 0, 0, 0, \cdots 0)$. So in this case, is $X_{:g} = \mbox{count}(AACAC)/| \mbox{count}(AACAC)| $? In other words, it's the proportion of observed $k$-mers in $T_g$? }
+
+\rob{A comment on how $X$ will ultimately depend on the users setup? But also, we offer some models of $X$, both in theory below, and in our code at XXX}
+Next we discuss the distribution of $K$-mers, that will then be used to discuss a model of the probability of observing a given $K$-mer.
 
 \subsubsection{Uniform read location}
-\rob{At this point it's not clear to me why we are worried about the distribution of $K$-mers being uniform or not. Is it because we assume this at some point?}
+\rob{This section needs an intro. Here we give one way in the which the Transciptome matrix $X$ can be constructed. By note that $X$ will ultimately depend on the technology/sampling/user setup...etc}
 Even if the reads are distributed uniformly along a transcript, the
 distribution of $K$-mers will not be uniform because of edge effects
 and because $K$-mers may appear more than once if $K$ is small.
@@ -271,7 +290,8 @@ and because $K$-mers may appear more than once if $K$ is small.
 For example, consider a transcript \texttt{ATGGCAATG} of nine bases.
 If reads are size six and we select 4-mers within those reads,
 the possibilities are as follows.
-\begin{center}
+\begin{table}[h!]
+\centering
   \begin{tabular}{l|l}
     \textit{Reads} & 4\textit{-mers}
     \\ \hline \hline
@@ -283,8 +303,11 @@ the possibilities are as follows.
     \\ \hline
     \texttt{\hspace{1.5em}GCAATG} & \texttt{\hspace{9em}GCAA, CAAT, AATG}
   \end{tabular}
-\end{center}
-The distribution of 4-mers resulting from uniformly distributed reads
+  \caption{Transcipt \texttt{ATGGCAATG} broken uniformly into $6$-mer reads which are then shredded into $4$-mers.}
+  \label{tab:reads}
+\end{table}
+\rob{At this point, showing that Reads are produced in the same way $K$-mers are, is a bit confusing. I feel it needs some introduction/explanation. Are Reads always generated this way? Is it in fact important to explain the way Reads are generated?}
+The distribution of $4$-mers resulting from uniformly sampling one of the above reads
 is not expected to be uniform, but rather as follows.
 \begin{center}
   \begin{tabular}{r|c||r|c}
@@ -306,15 +329,17 @@ by composing count functions,
   = \frac{\textrm{count}_K\left(\textrm{count}_J(T_g)\right)}
          {\textrm{sum}\left(\textrm{count}_K\left(\textrm{count}_J(T_g)\right)\right)},
 \]
-\rob{Here I'm confused if this is in fact the definition of $X$ or a result of assuming uniformly distributed reads?}
+\rob{Serious notation issues: $\textrm{count}_J$ is currently defined as a function over an $N$-mer, where $N \geq J.$ Furthermore, for a given $N$-mer $T$ we have that  $\textrm{count}_J(T) \in \mathbb{N}^{4^J}.$  What does $\textrm{count}_K\left(\textrm{count}_J(T_g)\right)$ mean?  }
+%\rob{Here I'm confused if this is in fact the definition of $X$ or a result of assuming uniformly distributed reads?}
 where the outer function $\textrm{count}_K$ is type lifted additively
 over functions as in the example.  Specifically, for a sequence $s$,
 and integers $K \leq J \leq \textrm{size}(s)$, the $4^K$-vector of
 $K$-mer counts found in uniformly distributed reads of size $J$ is
 \[
   \textrm{count}_K(\textrm{count}_J(s))
-  = \sum_{j = 0}^{4^J - 1} \textrm{count}_J(s)(j) \cdot \textrm{count}_K(j).
+  = \sum_{j = 0}^{4^J - 1} \textrm{count}_J(s)(j) \cdot \textrm{count}_K(j)\; \in\; \mathbb{N}^{4^K}.
 \]
+\rob{So this gives sums together the counts of $K$-mer in $j$, pondered by the number of reads $j$ in $s$. This makes sense only if reads are produced according to Table~\ref{tab:reads}}
 \rob{Is $s$ a sequence of reads? 
 }
 In other words, the result $\textrm{count}_K(\textrm{count}_J(s))$ is a
@@ -327,6 +352,7 @@ the sequence $s$.
 
 \subsubsection{Non-uniform read location}
 
+\rob{Empthasize again that this is why $X$ should be given by a user, though we offer some templates.}
 The probabilty of reads is non-uniform for several reasons.  Two
 causes that have large impacts are hexamer (6-mer) binding and
 position within the transcript.  In the first case, the probability of
@@ -355,10 +381,11 @@ originating from position $n$.
 \subsection{Observed data}
 
 The observation $y$ is a sparse $4^K$-vector of $K$-mer counts
-corresponding to the shredded reads.
+corresponding to the shredded reads. That is
 
+$$ y =    \textrm{count}_K(\textrm{count}_J(s)) \; \in \; \mathbb{N}^{4^k}. $$
+%This, together with 
 \subsection{Transformed transcriptome matrix}
-
 The transcriptome is representing as a $4^K \times G$ matrix $X$ as
 described above.  The parameter $\alpha \in \mathbb{R}^G$ is a
 $G$-vector whose values indicate the relative level of expression of
@@ -375,6 +402,7 @@ $4^K$-simplexes, the product $X \cdot \textrm{softmax}(\alpha)$ is a
 $4^K$ simplex---it just reweights the gene-level $K$-mer expressions
 represented by the columns by the gene expressions represented by
 $\textrm{softmax}(\alpha)$.
+\rob{Not sure what abundances means here. Is it the proportion of $K$-mers?}
 
 \subsection{Sampling distribution}
 
