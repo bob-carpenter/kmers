@@ -602,7 +602,7 @@ It follows that
 \begin{equation}\label{eq:Lhess}
 -\left(\frac{1}{\lambda^2}-\frac{ \mbox{sum}(y)}{2}\right)  \mI  \; \preceq \; \nabla^2 L(\alpha) \; \preceq \; \left(\frac{ \mbox{sum}(y)}{2}-\frac{1}{\lambda^2} \right) \mI
 \end{equation}
-Consequently for $\lambda \leq$
+Consequently if $\lambda \leq \sqrt{\tfrac{2}{ \mbox{sum}(y)}}$ then $L(y)$ is a concave function.
 \end{lemma}
 \begin{proof}
 Taking the derivative again in~\eqref{eq:ligrad} we have that
@@ -705,13 +705,18 @@ $ and $y = [1 , 1]$, where we have plotted along the line given by $\alpha_1 = -
 
 \subsection{Projecting on the Simplex}
 
-Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead use a constraint and solve
-
+Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead impose the simplex as a constraint and solve
 \begin{align}
 \theta^* \; \in \; \arg \max_{\theta \in \Delta^G}  \log p(\theta \mid X, y) &= y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
          +\log p(\theta)+\textrm{const.} \label{eq:posterior-const}
 \end{align} 
-As for the prior $p(\theta)$, since $\theta$ is in the simplex, we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
+As for the prior $p(\theta)$, since $\theta$ is in the simplex, we now choose a Dirchlet prior where
+\begin{equation}
+p(\theta) \; = \; \frac{1}{B(\beta)} \prod_{i=1}^G \theta_i^{\beta_i -1}, \quad \mbox{where}\quad B(\beta) = \frac{\prod_{i=1}^G \Gamma(\beta_i)}{\Gamma(\sum_{i=1}^G \beta_i)}
+\end{equation}
+
+
+we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
 
 The advantage of~\eqref{eq:posterior-const} is that, with a strongly convex prior, the resulting optimization problem is strongly convex and smooth, and thus can be provenly solve with L-BFGS.
 
