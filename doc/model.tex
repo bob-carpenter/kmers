@@ -4,6 +4,51 @@
 \usepackage{hyperref}
 \usepackage{amssymb}
 \usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+
+
+%%% Rob's math commands
+\newcommand{\R}{\mathbb{R}} % Reals
+\newcommand{\N}{\mathbb{N}} % Naturals
+\newcommand{\diag}[1]{\mathbf{diag}\left( #1\right)}
+\newcommand{\mI}{{\bf I}}
+\usepackage{mathtools}
+\usepackage{mdframed} 
+\usepackage{thmtools}
+\newcommand{\mM}{{\bf M}}
+\newcommand{\ones}{{\bf 1}}
+\newcommand{\dotprod}[1]{\left< #1\right>} % product
+\newcommand{\norm}[1]{ \left\| #1 \right\|}      % norm 
+
+%% Packages for shaded lemmas and theorems because Robert likes these
+\definecolor{shadecolor}{gray}{0.90}
+\declaretheoremstyle[
+headfont=\normalfont\bfseries,
+notefont=\mdseries, notebraces={(}{)},
+bodyfont=\normalfont,
+postheadspace=0.5em,
+spaceabove=1pt,
+mdframed={
+  skipabove=8pt,
+  skipbelow=8pt,
+  hidealllines=true,
+  backgroundcolor={shadecolor},
+  innerleftmargin=4pt,
+  innerrightmargin=4pt}
+]{shaded}
+
+
+\declaretheorem[style=shaded,within=section]{definition}
+\declaretheorem[style=shaded,sibling=definition]{theorem}
+\declaretheorem[style=shaded,sibling=definition]{proposition}
+\declaretheorem[style=shaded,sibling=definition]{assumption}
+\declaretheorem[style=shaded,sibling=definition]{corollary}
+\declaretheorem[style=shaded,sibling=definition]{conjecture}
+\declaretheorem[style=shaded,sibling=definition]{lemma}
+\declaretheorem[style=shaded,sibling=definition]{remark}
+\declaretheorem[style=shaded,sibling=definition]{example}
+
 
 \title{Alignment-free relative abundance with $K$-mers}
 \author{Bob Carpenter}
@@ -34,8 +79,13 @@
 
 \rob{Questions}
 \begin{enumerate}
-\item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this?
+ \item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this?
 \item  To compare the two approaches of using simplex constraint or softmax, how can we determine which one works best? 
+\end{enumerate}
+
+\rob{TODO}
+\begin{enumerate}
+\item Leave soft-max parametrization for later. Re-organize draft around just $\theta $ as a simplex variable. After all, using soft-max is just one possible  implementation, even after assuming $y$ follows a multinomial.
 \end{enumerate}
 \section{Introduction}
 
@@ -229,51 +279,9 @@ Suppose we have a transcriptome consisting of $G$ base sequences. Here we descri
 %relative abundance of sequence $g$ in the transcriptome.
 \rob{Re-write: Now we describe the statistical model which, given the proportion of }
 
-\subsection{Parameterizing simplexes}
-%\rob{This is a choice of parametrization that only need when implementing and computing the max log-likelihood. So move this further down?}
-%A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
-%such that $\textrm{sum}(\theta) = 1.$ 
- A vector $\alpha
-\in \mathbb{R}^K$ can be mapped to the simplex using the softmax
-function,
-\[
-  \textrm{softmax}(\alpha)
-  = \frac{\exp(\alpha)}
-         {\textrm{sum}(\exp(\alpha))} \in \Delta^K,
-\]
-where $\exp(\alpha)$ is defined elementwise.   By construction,
-$\textrm{softmax}(\alpha)$ is a simplex, because
-$\textrm{softmax}(\alpha)_i > 0$ and
-$\textrm{sum}(\textrm{softmax}(\alpha)) = 1$.
-
-As a function from $K$-vectors to $K$-simplexes, softmax is many to
-one, because adding a constant to each component of $\alpha$ leads to
-the same result,
-
-\[
-  \textrm{softmax}(\alpha)
-  = \textrm{softmax}(\alpha + \lambda \cdot \textbf{1}_K),
-\]
-where $\lambda \in \mathbb{R}$ and $\textbf{1}_K$ is $K$-vector
-of ones. In other words,  softmax is  not an injective function.
-
-We can however extend the softmax function into a one-to-one mapping  as follows.
-The  softmax0 function defines a smooth, one-to-one mapping from
-$\mathbb{R}^{K-1}$ to $K$-simplexes by
-\[
-  \textrm{softmax0}(\beta) = \textrm{softmax}([0 \ \, \beta]).
-\]
-That is, a zero element is appended to the front of the $(K-1)$-vector.
-The $\textrm{softmax0}(\beta) =\theta$ function is one-to-one since we  now  $\theta_1 = (\textrm{sum}(\exp(\alpha))^{-1}$ and thus we have that
-$$ \alpha_i = \ln\left(\frac{\theta_i}{\theta_0} \right), \quad \mbox{for }i=1,\ldots, K. $$.
-Thus this fixed first element can be used to determine the inputs. 
-%changes the interpretation of the elements from being only
-%determined relative to each other to having their scale defined
-%relative to the fixed first element.
-\rob{Just double checking, we actually use the $ \textrm{softmax0} $ function in our code?}
 \subsection{Transcriptome matrix}
 
-A sequence $T_g$ in the transcriptome can be transformed into a
+A sequence $T_1, \ldots, T_g, \ldots, T_G$ in the transcriptome can be transformed into a
 $4^K$-simplex representing the probability of observing a given
 $K$-mer given a read of transcript $g$.  The entire transcriptome can
 then be converted to a $(4^K \times G)$-matrix $X$, where column $g$ is the
@@ -413,31 +421,35 @@ This can be computed using....some technology thing ....
 
 \subsection{Transformed transcriptome matrix}
 The transcriptome is representing as a $4^K \times G$ matrix $X$ as
-described above.  The parameter $\alpha \in \mathbb{R}^G$ is a
-$G$-vector whose values indicate the relative level of expression of
-each transcript on the log scale; $\theta = \textrm{softmax}(\alpha)$
-is the corresponding $G$-simplex representing the relative abundance
-$\theta_g$ of each transcript $T_g$ in the transcriptome.
+described above. 
+
+ The parameter is
+% $\alpha \in \mathbb{R}^G$ is a
+%$G$-vector whose values indicate the relative level of expression of
+%each transcript on the log scale; 
+$\theta \in \Delta^G$
+that is in the  $G$-simplex where 
+$\theta_g$ represent the proportion of each transcript $T_g$ in the transcriptome.
 
 The key step is the transform of the transcript abundances,
-represented by $\theta = \textrm{softmax}(\alpha)$, to $K$-mer
+represented by $\theta \in \Delta^G$, to $K$-mer
 abundances, as represented by
-$\phi = X \cdot \textrm{softmax}(\alpha)$.  Because
-$\textrm{softmax}(\alpha)$ is a $G$-simplex and the columns of $X$ are
-$4^K$-simplexes, the product $X \cdot \textrm{softmax}(\alpha)$ is a
-$4^K$ simplex---it just reweights the gene-level $K$-mer expressions
+$\phi = X \cdot \theta$.  Because
+$\theta$ is in the $G$-simplex and the columns of $X$ are
+in $\Delta^{4^K}$, the product $X \cdot \theta$ is in
+$\Delta^{4^K}$---it just reweights the gene-level $K$-mer expressions
 represented by the columns by the gene expressions represented by
-$\textrm{softmax}(\alpha)$.
+$\theta$.
 \rob{This section should be moved and merged with section 6.2, or just removed. }
 
 \subsection{Sampling distribution}
-
-Since $y$ is a vector of counts of $K$-mers, we make the natural assumption that $y$ was generated 
+	
+Since $y \in \mathbb{N}^{4^k}$ is a vector of counts of $K$-mers, we make the natural assumption that $y$ was generated 
 by a multinomial distribution with
 \[
-  y \sim \textrm{multinomial}(X \cdot \textrm{softmax}(\alpha)).
+  y \sim \textrm{multinomial}(X \cdot \theta).
 \]
-Here we have used  $X \cdot \textrm{softmax}(\alpha)$, that is the proportion of observed $K$-mers, as the probabilities of sampling a $K$-mer.
+Here we have used  $X \cdot \theta$, that is the proportion of observed $K$-mers, as the probabilities of sampling a $K$-mer.
 
 %
 %The sampling distribution $p(y \mid X, \alpha)$  for the observed
@@ -446,7 +458,65 @@ Here we have used  $X \cdot \textrm{softmax}(\alpha)$, that is the proportion of
 
 
 
-\subsection{Prior}
+
+\section{Posterior}
+
+Given our statistical model, our goal is now to find the most likely 
+parameters given $y$ and $X$. But first, we still need to enforce that $\theta$ is in the simplex. 
+Here we show how to use the softmax mapping or an explicit projection method to enforce that $\theta$ is in the simplex. 
+
+%\textrm{softmax}(\alpha))
+
+
+\subsection{Softmax Parametrization}
+%\rob{This is a choice of parametrization that only need when implementing and computing the max log-likelihood. So move this further down?}
+%A $K$-\emph{simplex} is a $K$-vector $\theta$ of non-negative values
+%such that $\textrm{sum}(\theta) = 1.$ 
+ A vector $\alpha
+\in \mathbb{R}^{G}$ can be mapped to the simplex using the softmax
+function,
+\begin{equation}\label{eq:softmax}
+\textrm{softmax}(\alpha)_i :=\frac{e^\alpha_i}{\sum_{j=1}^G e^{\alpha_j}}, \quad \mbox{for }i=1,\ldots, G.
+\end{equation}
+or in a more abbreviated   notation
+\[
+  \textrm{softmax}(\alpha)
+  = \frac{\exp(\alpha)}
+         {\textrm{sum}(\exp(\alpha))} \in \Delta^{4^K},
+\]
+where $\exp(\alpha)$ is defined elementwise.   By construction,
+$\textrm{softmax}(\alpha)$ is a simplex, because
+$\textrm{softmax}(\alpha)_i > 0$ and
+$\textrm{sum}(\textrm{softmax}(\alpha)) = 1$.
+
+As a function from $K$-vectors to $K$-simplexes, softmax is many to
+one, because adding a constant to each component of $\alpha$ leads to
+the same result,
+
+\[
+  \textrm{softmax}(\alpha)
+  = \textrm{softmax}(\alpha + \lambda \cdot \textbf{1}_K),
+\]
+where $\lambda \in \mathbb{R}$ and $\textbf{1}_K$ is $K$-vector
+of ones. In other words,  softmax is  not an injective function.
+
+We can however extend the softmax function into a one-to-one mapping  as follows.
+The  softmax0 function defines a smooth, one-to-one mapping from
+$\mathbb{R}^{K-1}$ to $K$-simplexes by
+\[
+  \textrm{softmax0}(\beta) = \textrm{softmax}([0 \ \, \beta]).
+\]
+That is, a zero element is appended to the front of the $(K-1)$-vector.
+The $\textrm{softmax0}(\beta) =\theta$ function is one-to-one since we  now  $\theta_1 = (\textrm{sum}(\exp(\alpha))^{-1}$ and thus we have that
+$$ \alpha_i = \ln\left(\frac{\theta_i}{\theta_0} \right), \quad \mbox{for }i=1,\ldots, K. $$.
+Thus this fixed first element can be used to determine the inputs. 
+%changes the interpretation of the elements from being only
+%determined relative to each other to having their scale defined
+%relative to the fixed first element.
+\rob{Just double checking, we actually use the $ \textrm{softmax0} $ function in our code?}
+
+
+\subsubsection{Prior}
 
 The prior is a normal centered at the origin,
 \[
@@ -465,9 +535,11 @@ distribution,
   \alpha_g \sim \textrm{double-exponential}(0, \lambda).
 \]
 
-\subsection{Posterior}
 
-Given our statistical model, our goal is now to find the most likely $\alpha \in \mathbb{R}^{G}$ given $y$ and $X$. That is, we now want to solve
+\subsubsection{Posterior}
+
+With the softmax mapping and the prior, we can now determine the most likely 
+$\alpha \in \mathbb{R}^{G}$ given $y$ and $X$. That is, we now want to solve
 \begin{equation}
 \alpha^* \; \in \; \arg \max \log p(\alpha \; \mid \; X,y).
 \end{equation}
@@ -475,16 +547,103 @@ Given our statistical model, our goal is now to find the most likely $\alpha \in
 Fortunately, this posterior distribution has a simple closed form that lends itself to optimization.
  Indeed, by Bayes's rule up to an additive constant
 that does not depend on the parameters $\alpha$ we have that
-\begin{align}\label{eq:posterior}
+\begin{align}\nonumber
   \log p(\alpha \mid X, y)& = \log p(y \mid X, \alpha) + \log p(\alpha) +
   \textrm{const.}  \\
   &= y^{\top} \cdot \log \left( X^{\top} \cdot \textrm{softmax}(\alpha) \right)
-          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.} \nonumber
+          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.}  \label{eq:posterior} 
 \end{align} 
- where the logarithm is applied elementwise over the vector $ X^{\top} \cdot \textrm{softmax}(\alpha).$ 
+ where the logarithm is applied elementwise over the vector $ X^{\top} \cdot \textrm{softmax}(\alpha).$ To determine the most likely parameters, we maximize the log posterior, that is
+ 
+ \begin{equation} \label{eq:posteriormax} 
+ \alpha^* \; \in \; \max_{\alpha \in \mathbb{R}^G} \; L(\alpha) :=  \sum_{i=1}^{4^K} y_i \cdot \log \left( x_i^\top \cdot \textrm{softmax}(\alpha) \right)
+          - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha,
+ \end{equation}
+where we have used $x_i := X_{:i}$ to denote the $i$th column of $X,$ and defined the objective function $L(\alpha)$ which is propotional to the posterior~\eqref{eq:posterior}.
+We can solve~\eqref{eq:posteriormax} because it has an upper bound. 
+
+\begin{lemma}
+The objective function $L(\alpha)$ is upper bounded by 
+\begin{equation}
+L(\alpha) \geq 0.
+\end{equation}
+The gradient of $L(\alpha)$ is given by
+\begin{equation}\label{eq:Lgrad}
+\nabla_{\alpha}  L(\alpha) \; =\;  \sum_{i=1}^{4^K} y_i \left(\frac{\sigma(\alpha) \odot  x_i}{ x_i^{\top} \cdot \sigma(\alpha) } - \sigma(\alpha)\right) - \frac{1}{2 \cdot \lambda^2} \cdot \alpha
+\end{equation}
+where $\odot$ is the  elementwise multiplication also known as the Hadamard product.
+\end{lemma}
+\begin{proof}
+Let $\ell_i(\alpha) := y_i \log \left( x_i^{\top} \cdot \textrm{softmax}(\alpha) \right)$ for the brevity. Consequently
+\begin{equation}
+L(\alpha) \; =  \;\sum_{i=1}^{4^K} \ell_i(\alpha)  - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha.
+\end{equation}
+
+The function $\ell_i$ is upper bounded, since $\log$ is monotonically increasing , we have that 
+$$ \ell_i(\alpha) = y_i \log \left( x_i^{\top} \cdot \sigma(\alpha) \right) \leq y_i \log \left( x_i^{\top} \cdot \frac{x_i}{\norm{x_i}}\right) = y_i \log \left( 1\right) =0.$$
+Consequently
+\[ L(\alpha) \leq 0 - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha \leq 0.\]
+
+
+The gradient of $\ell_i$ is given by
+\begin{align}
+    \nabla \ell_i(\alpha) & = \; y_i\frac{\nabla \sigma(\alpha) x_i}{ x_i^{\top} \sigma(\alpha) } \nonumber \\
+          & =  y_i\frac{\sigma(\alpha) \odot  x_i -\sigma(\alpha) \sigma(\alpha)^\top x_i}{ x_i^{\top} \cdot \sigma(\alpha) }
+          & \mbox{Using~\eqref{eq:siggrad}} \nonumber  \\
+          & = y_i \frac{\sigma(\alpha) \odot  x_i}{ x_i^{\top} \cdot \sigma(\alpha) } - y_i\sigma(\alpha), \label{eq:ligrad}
+\end{align}
+where $v\odot w = \sum_{i} v_i w_i e_i$ is the hadamard product. Consequently the gradient of $L(\alpha)$ can is given by~\eqref{eq:Lgrad}.
+
+\end{proof}
+
+Furthermore, $L(\alpha)$ is a smooth function, as we prove in the next lemma.
+\begin{lemma}
+It follows that 
+\begin{equation}\label{eq:Lhess}
+-\left(\frac{1}{\lambda^2}-\frac{ \mbox{sum}(y)}{2}\right)  \mI  \; \preceq \; \nabla^2 L(\alpha) \; \preceq \; \left(\frac{ \mbox{sum}(y)}{2}-\frac{1}{\lambda^2} \right) \mI
+\end{equation}
+Consequently for $\lambda \leq$
+\end{lemma}
+\begin{proof}
+Taking the derivative again in~\eqref{eq:ligrad} we have that
+\begin{align}
+\nabla^2 \ell_i(\alpha) & =   y_i \left(\frac{\nabla \sigma(\alpha)  \diag{ x_i}}{ x_i^{\top} \cdot \sigma(\alpha) } - \frac{ (\nabla \sigma(\alpha) x_i)(\sigma(\alpha)  \odot x_i)^\top}{( x_i^{\top} \cdot \sigma(\alpha) )^2}  \right) -y_i\nabla \sigma(\alpha). \label{eq:tempsoinjz4}
+\end{align}
+    Next note that 
+    \begin{align*}
+        \frac{ (\nabla \sigma(\alpha) x_i)(\sigma(\alpha)  \odot x_i)^\top}{( x_i^{\top} \cdot \sigma(\alpha) )^2} & = \frac{ (\sigma(\alpha) \odot x_i - \sigma(\alpha)  \sigma(\alpha) ^\top x_i )(\sigma(\alpha)  \odot x_i)^\top}{( x_i^{\top} \cdot \sigma(\alpha) )^2} \\
+        &= \frac{ (\sigma(\alpha) \odot x_i) (\sigma(\alpha) \odot x_i)^\top  }{( x_i^{\top} \cdot \sigma(\alpha) )^2} - \frac{\sigma(\alpha) (\sigma(\alpha) \odot x_i)^\top } { x_i^{\top} \cdot \sigma(\alpha) }
+    \end{align*}
+
+Furthermore
+\begin{align*}
+    \frac{\nabla \sigma(\alpha)  \diag{ x_i}}{ x_i^{\top} \cdot \sigma(\alpha) } & = \frac{  \diag{\sigma(\alpha)\odot x_i}}{ x_i^{\top} \cdot \sigma(\alpha) } -\frac{\sigma(\alpha) (\sigma(\alpha) \odot x_i)^\top }{ x_i^{\top} \cdot \sigma(\alpha) }
+\end{align*}
+Inserting the above two identities into~\eqref{eq:tempsoinjz4}, using~\eqref{eq:siggrad} and after some cancellation gives the resulting identity
+\begin{align}
+\nabla^2 \ell_i(\alpha)& = y_i \left(\frac{  \diag{\sigma(\alpha)\odot x_i}  }{ x_i^{\top} \cdot \sigma(\alpha) } -\frac{ (\sigma(\alpha) \odot x_i) (\sigma(\alpha) \odot x_i)^\top  }{( x_i^{\top} \cdot \sigma(\alpha) )^2}  +\sigma(\alpha)\sigma(\alpha)^\top - \diag{\sigma(\alpha)}\right). \label{eq:tempsoinjz4}
+\end{align}
+
+To temporarily simplify our notation, let
+\[v_i := \frac{\sigma(\alpha) \odot x_i}{x_i^{\top} \cdot \sigma(\alpha)}\]
+and note that $(v_i)_j \geq 0$ since $(\sigma(\alpha) \odot x_i)_j \geq 0$ and furthermore 
+\[\sum_{j} (v_i)_j = \sum_{j=1}^n \frac{\sigma(\alpha)_j (x_i)_j}{x_i^{\top} \cdot \sigma(\alpha)} =\frac{x_i^{\top} \cdot \sigma(\alpha)}{x_i^{\top} \cdot \sigma(\alpha)} =1. \]
+Thus $v_i$ is a probability vector. Using this notation we have that
+\begin{align}
+\nabla^2 \ell_i(\alpha)& = y_i \left( \diag{v_i} - v_iv_i^\top +\sigma(\alpha)\sigma(\alpha)^\top - \diag{\sigma(\alpha)} \right). \label{eq:tempsoinjz4}
+\end{align}
+
+Let  $\mM = v_iv_i^\top -\diag{v_i} +\diag{\sigma(\alpha)} -\sigma(\alpha)\sigma(\alpha)^\top$. By applying Lemma~\ref{lem:probmat} twice we have that $- \frac{1}{2}\mI \preceq \mM \preceq \frac{1}{2}\mI$, which shows that
+\begin{align}
+-\frac{y_i}{2}\mI \preceq \; \nabla^2 \ell_i(\alpha)& \preceq  \frac{y_i}{2}\mI
+\end{align}
+The proof of~\eqref{eq:Lhess} now follow by summing up over the above and using that $\nabla^2 \frac{1}{2 \lambda^2}\alpha^\top \alpha = \frac{1}{\lambda^2} \mI.$
+\end{proof}
 
 
 %\subsubsection{Posterior gradient}
+
+\rob{**previous version***}
 We can also efficiently compute the gradient\footnote{The derivative is easy to work out
   by passing \url{matrixcalculus.org} the query
   \begin{center}\texttt{y' * log
@@ -510,9 +669,41 @@ where
 \]
 and $\odot$ represents elementwise multiplication and $\oslash$
 elementwise division. 
+\rob{The second term can be greatly simplified since
+$$  t = X^{\top}\! \cdot (y \oslash (X \cdot \textrm{softmax}(\alpha))) =  X^{\top}\! \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y$$
+thus
+$$  \textrm{softmax}(\alpha)^{\top}\! \cdot t \cdot \textrm{softmax}(\alpha)  = 
+ \textrm{softmax}(\alpha)^{\top}\! \cdot X^{\top}\! \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha)
+$$
+$$
+ =(X  \textrm{softmax}(\alpha))^{\top} \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha)
+ = \ones ^\top  y \cdot \textrm{softmax}(\alpha)
+ = \mbox{sum}(y)\cdot \textrm{softmax}(\alpha),
+ $$
+ where we used that $v^\top \diag{v}^{-1} = \ones^\top$. 
+}
+
+Unfortunately this function~\eqref{eq:posterior} if typically non-concave and non-convex, when the prior constant $\lambda$ is large. To illustrate, and demonstrate this, we have created a simple example in Figure~\ref{fig:nonconvex}. The reason~\eqref{eq:posterior} is  
+
+\begin{figure}
+\centering
+\includegraphics[width=5cm]{./figures/slice_ell} \hspace{1cm} 
+\includegraphics[width=5cm]{./figures/slice_ell_reg}
+\caption{Plot of the posterior~\eqref{eq:posterior} in $\alpha$ where
+$ X~=~\begin{bmatrix}
+0.25 & 0.5 \\
+0.75 & 0.5
+\end{bmatrix}
+$ and $y = [1 , 1]$, where we have plotted along the line given by $\alpha_1 = - \alpha_2$ and Left: where $\lambda = 100$ and Right: $\lambda =\sqrt{3}$.
+\rob{These figures should be flipped on the $y$-axis because these as the negative log-likelihoods.}
+}
+\label{fig:nonconvex}
+\end{figure}
 
 
-\section{Alternative Representation}
+
+
+\subsection{Projecting on the Simplex}
 
 Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead use a constraint and solve
 
@@ -598,4 +789,52 @@ the $\textrm{L}_2$ penalty defined above, the
   Sandrine Dudoit1,3.  Nucleic acids research.
 \end{itemize}
 
+
+\appendix
+
+\section{Useful Lemmas}
+
+
+\begin{lemma}
+The Jacobian $\nabla \textrm{softmax}(\alpha) \in \R^{T \times T}$ of  softmax~\eqref{eq:softmax} satisfies
+\begin{equation}\label{eq:siggrad}
+     \nabla \textrm{softmax}(\alpha)  = \diag{\textrm{softmax}(\alpha)} -\textrm{softmax}(\alpha)\textrm{softmax}(\alpha)^\top, 
+\end{equation}
+where $\diag{\textrm{softmax}(\alpha)} \in \R^{T \times T}$ is a diagonal matrix. Consequently we have that
+\begin{equation}\label{eq:sigmamatrxbound}
+  0  \preceq \nabla \textrm{softmax}(\alpha) \preceq \frac{1}{2} \mI_T,
+\end{equation}
+where $\mI_T \in \R^{T \times T}$ is the identity matrix. 
+\end{lemma}
+\begin{proof}
+Taking the derivative of~\eqref{eq:softmax} we have that
+    \begin{align*}
+    \nabla_{\alpha_i} \sigma (\alpha)_j &=  \frac{e^{\alpha_j} \delta_{ij}}{\sum_{j=1}^T e^{\alpha_j}} -\frac{e^{\alpha_j}e^{\alpha_i}}{(\sum_{j=1}^T e^{\alpha_j})^2}  \\
+    &= \textrm{softmax}(\alpha)_j \delta_{ij} - \textrm{softmax}(\alpha)_j\textrm{softmax}(\alpha)_i
+\end{align*}
+    Summing up over $i,j=1,\ldots, T$ gives~\eqref{eq:siggrad}. Finally~\eqref{eq:sigmamatrxbound} follows from Lemma~\ref{lem:probmat}.
+\end{proof}
+
+
+
+\begin{lemma}\label{lem:probmat}
+Let $p \in \R^n$ be a vector of probabilities with $\sum_{i=1}^n p_i =1.$ It follows that
+\begin{equation}
+ 0  \preceq   \diag{p} - p p^\top \preceq  \frac{n}{2} \left( \frac{1}{n}\mI - \frac{1}{n^2}\ones \ones^\top  \right) = \frac{1}{2}\mI - \frac{1}{n}\ones \ones^\top \preceq  \frac{1}{2}\mI .
+\end{equation}
+\end{lemma}
+\begin{proof}
+Let $\mM =\diag{p} - p p^\top.$
+Using Gershgorin's circle theorem we have that every eigenvalue of $\mM$ satisfies
+\[ |\mM_{ii} - \lambda  | \leq \sum_{j\neq i} |\mM_{ij}| \]
+That is
+\[ |p_i(1-p_i) - \lambda  | \leq \sum_{j\neq i} p_i p_j = p_i(1-p_i). \]
+Consequently
+\[0 \leq \lambda \leq 2 p_i(1-p_i).\]
+Thus $\mM$ is positive semi-definite. The argument for the upper bound is that $\mM(p) \preceq \mM(1/n , \ldots , 1/n)$ which follows by showing that 
+\[ \left[ \frac{1}{n}, \ldots, \frac{1}{n}\right]= \arg\max_{p^*} \max_v \frac{v ^\top \mM(p) v}{v ^\top \mM(p^*) v}\]
+
+
+Alternative argument. For the upper bound clearly $\mM \preceq \diag{p}.$ Consequently $\lambda_{\max}(\mM) \leq \lambda_{\max}(\diag{p}) = \max_i p_i \leq 1.$
+\end{proof}
 \end{document}
