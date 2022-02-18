@@ -1,0 +1,53 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows, positioning, calc, patterns, shadows, external}
+%%%<
+\usepackage{verbatim}
+\usepackage{lmodern}
+\usepackage{scrextend}
+\usepackage{relsize}
+\usepackage[active,tightpage]{preview}
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{5pt}%
+%%%>
+\usetikzlibrary{chains,fit,shapes, shapes.multipart}
+
+\begin{document}
+\changefontsizes{20pt}
+\begin{tikzpicture}
+\tikzset{
+  every path/.style={very thick},
+  line/.style={draw, -latex', thick},
+  seq/.style={rectangle split,
+    rectangle split horizontal,
+    rectangle split parts=#1,
+    minimum height=1cm,
+    draw, anchor=center}
+}
+
+\node [seq=10, rectangle split part fill={white,white, cyan!30, cyan!30,cyan!30, cyan!30, cyan!30, cyan!30, cyan!30,white}] (T) at (0cm, 8cm)
+{A \nodepart{two} T \nodepart{three} G \nodepart{four} G \nodepart{five} C \nodepart{six} A \nodepart{seven} A \nodepart{eight} T \nodepart{nine} G \nodepart{ten} C};
+
+
+\node [seq=7, rectangle split part fill={ cyan!30, cyan!30,cyan!30, cyan!30, cyan!30, cyan!30, cyan!30}] (R) at (0cm, 4cm)
+{ G \nodepart{two} G \nodepart{three} C \nodepart{four} A \nodepart{five} A \nodepart{six} T \nodepart{seven} G };
+
+
+\matrix[row sep=0.5cm, column sep=0.5cm] (K) at (0cm, 0cm)
+{
+\node [seq=4, rectangle split part fill={cyan!30, cyan!30}] 
+  {G \nodepart{two} G \nodepart{three} C \nodepart{four} A};  & \node [seq=4, rectangle split part fill={cyan!30, cyan!30}] 
+  {G \nodepart{two} C \nodepart{three} A \nodepart{four} A};\\
+   
+  \node [seq=4, rectangle split part fill={cyan!30, cyan!30}] {C \nodepart{two} A \nodepart{three} A \nodepart{four} T};  & \node [seq=4, rectangle split part fill={cyan!30, cyan!30}] 
+  {A \nodepart{two} A \nodepart{three} T \nodepart{four} C};\\
+ };
+  
+  
+  
+\path [->, thick] (T)  edge   node[auto,] {Sample a read} (R);
+\path [->, thick] (R) edge node[auto,] {Break into 4-mers} (K);
+%\node [seq=3, rectangle split part fill={cyan!30, cyan!30}] (K) at (0cm, 0cm)   {A \nodepart{two} G \nodepart{three} C}; 
+\end{tikzpicture}
+\changefontsizes{12pt}
+\end{document}
