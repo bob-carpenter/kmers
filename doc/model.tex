@@ -7,6 +7,8 @@
 \usepackage{amsfonts}
 \usepackage{amsthm}
 
+\usepackage{graphicx}
+\graphicspath{{./figures/}}  % Path to figures folder
 
 %%% Rob's math commands
 \newcommand{\R}{\mathbb{R}} % Reals
@@ -20,7 +22,8 @@
 \newcommand{\ones}{{\bf 1}}
 \newcommand{\dotprod}[1]{\left< #1\right>} % product
 \newcommand{\norm}[1]{ \left\| #1 \right\|}      % norm 
-
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
 %% Packages for shaded lemmas and theorems because Robert likes these
 \definecolor{shadecolor}{gray}{0.90}
 \declaretheoremstyle[
@@ -563,7 +566,7 @@ where we have used $x_i := X_{:i}$ to denote the $i$th column of $X,$ and define
 We can solve~\eqref{eq:posteriormax} because it has an upper bound. 
 
 \begin{lemma}
-The objective function $L(\alpha)$ is upper bounded by 
+The objective function $L(\alpha)$ is lower bounded by 
 \begin{equation}
 L(\alpha) \geq 0.
 \end{equation}
@@ -703,22 +706,41 @@ $ and $y = [1 , 1]$, where we have plotted along the line given by $\alpha_1 = -
 
 
 
-\subsection{Projecting on the Simplex}
+\subsection{Simplex Constraint}
 
 Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead impose the simplex as a constraint and solve
 \begin{align}
 \theta^* \; \in \; \arg \max_{\theta \in \Delta^G}  \log p(\theta \mid X, y) &= y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
          +\log p(\theta)+\textrm{const.} \label{eq:posterior-const}
 \end{align} 
-As for the prior $p(\theta)$, since $\theta$ is in the simplex, we now choose a Dirchlet prior where
+As for the prior $p(\theta)$, since $\theta$ is in the simplex, we now choose a symmetric Dirchlet  prior over the parameters where
 \begin{equation}
-p(\theta) \; = \; \frac{1}{B(\beta)} \prod_{i=1}^G \theta_i^{\beta_i -1}, \quad \mbox{where}\quad B(\beta) = \frac{\prod_{i=1}^G \Gamma(\beta_i)}{\Gamma(\sum_{i=1}^G \beta_i)}
+p(\theta) \; = \; \frac{\Gamma(\beta G)}{\Gamma(\beta)^G} \prod_{i=1}^G \theta_i^{\beta -1}, 
+%\quad \mbox{where}\quad B(\beta) = \frac{\prod_{i=1}^G \Gamma(\beta_i)}{\Gamma(\sum_{i=1}^G \beta_i)}
 \end{equation}
-
-
-we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
-
-The advantage of~\eqref{eq:posterior-const} is that, with a strongly convex prior, the resulting optimization problem is strongly convex and smooth, and thus can be provenly solve with L-BFGS.
+where $\beta>0$ and $\Gamma$ is the gamma function $\Gamma(z) : = \int_{0}^{\infty} x^{z-1}e^{-x}dx.$
+Consequently~\eqref{eq:posterior-const} is equivalent to solving
+ \begin{align}
+\theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
+         +(\beta-1)\sum_{i=1}^G\theta_i =: f(\theta). \label{eq:posterior-const}
+\end{align} 
+For the above function $f(\theta)$ we have that
+\begin{align}
+\nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \ones\\
+&= X y \;\diag{X^\top \theta}^{-1}+ (\beta-1 ) \ones
+\end{align}
+We can solve~\eqref{eq:posterior-const} iteratively using the Exponentiated Gradient Descent (EGA) method. At each iteration, EGA minimizes a linearization of the objective together with KL divergence, that is
+\begin{align}\label{eq:EGA}
+\theta^{t+1} & = \argmin_{\theta} -f(\theta^t) - \nabla f(\theta^t)^\top(\theta -\theta^t) + \frac{1}{\gamma_t} KL(\theta,\theta^t),
+\end{align}
+where $\gamma_t >0$ is a step length and $ KL(p,q) = \sum_i p_i \log\left(\frac{p_i}{q_i} \right)- \sum_i(p_i-q_i)$. Fortunately~\eqref{eq:EGA} has a closed form solution given by
+\begin{align}\label{eq:EGAupdate}
+\theta^{t+1} &=  \frac{\theta^t_i \exp( \gamma_t  \nabla_{i}f(\theta^t) )}{\sum_{j=1}^G\theta^t_j \exp( \gamma_t  \nabla_{j}f(\theta^t) ) }.
+\end{align}
+Note that at every iteration we have that $\theta^t \in \Delta^G.$
+%we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
+%
+%The advantage of~\eqref{eq:posterior-const} is that, with a strongly convex prior, the resulting optimization problem is strongly convex and smooth, and thus can be provenly solve with L-BFGS.
 
 \section{Estimating expression}
 
