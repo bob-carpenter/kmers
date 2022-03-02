@@ -34,14 +34,14 @@ def shred(seq, K):
 
 
 def transcriptome_to_x(
-    K, fasta_file, x_file, max_nz=500 * 1000 * 1000, float_t=np.float32, int_t=np.int32
+    K, fasta_file, x_file, L =None, max_nz=500 * 1000 * 1000, float_t=np.float32, int_t=np.int32
 ):
     print("K =", K)
     print("fasta file =", fasta_file)
     print("target x file =", x_file)
     print("float type =", float_t)
     print("int type =", int_t)
-    M = 4 ** K
+    M = 4**K
     print("M =", M)
     with open(fasta_file) as f:
         parser = fastaparser.Reader(f, parse_method="quick")
@@ -50,12 +50,16 @@ def transcriptome_to_x(
         row_ind = np.zeros(max_nz, dtype=int_t)
         col_ind = np.zeros(max_nz, dtype=int_t)
         pos = 0
-        for seq in parser:
+        for s in parser:
             if n % 5000 == 0:
                 print("seqs read = ", n)
-            if "PREDICTED" in seq.header:
+            if "PREDICTED" in s.header:
                 continue
-            iter = shred(seq.sequence, K)
+            seq = s.sequence
+            if(L is not None):
+                if len(seq) < L:
+                    continue
+            iter = shred(s.sequence, K)
             iter_filtered = filter(valid_kmer, iter)
             kmer_counts = Counter(iter_filtered)
             total_count = sum(kmer_counts.values())
@@ -73,3 +77,7 @@ def transcriptome_to_x(
     xt = csr_matrix((data, (row_ind, col_ind)), shape=(M, n), dtype=float_t)
     print("saving csr matrix to file = ", x_file)
     save_npz(x_file, xt)
+
+
+def get_theta_truth(theta_file):
+    return np.load(theta_file)

@@ -1,12 +1,11 @@
-import kmerexpr.multinomial_model as mm
+import kmerexpr.multinomial_simplex_model as mm
 import kmerexpr.transcriptome_reader as tr
 import numpy as np
 import os
 import pytest
 from scipy import optimize
-from test.conftest import check_gradient
-from scipy.special import softmax as softmax
 
+from test.conftest import check_gradient
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA_PATH = os.path.join(HERE, "data")
@@ -18,11 +17,12 @@ def test1():
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)
-    model = mm.multinomial_model(X_FILE, y_test)
+    model = mm.multinomial_simplex_model(X_FILE, y_test)
     os.remove(X_FILE)
     assert model.T() == 3
     assert model.M() == 16
-    theta_test = np.random.normal(0, 1, model.T())
+    alpha = 0.5 * np.ones(model.T())
+    theta_test = np.random.dirichlet(alpha)
     check_gradient(model, theta_test)
 
 @pytest.mark.slow
@@ -36,11 +36,12 @@ def test_human_transcriptome():
     print("finished writing x to file")
     y_test = np.random.poisson(20, 4 ** K)
     print("reading in model")
-    model = mm.multinomial_model(X_FILE, y_test)
+    model = mm.multinomial_simplex_model(X_FILE, y_test)
     os.remove(X_FILE)
     assert model.T() == T
     assert model.M() == M
-    theta_test = np.random.normal(0, 1, T)
+    alpha = 0.1 * np.ones(model.T())
+    theta_test = np.random.dirichlet(alpha)
     print("checking gradient")
     check_gradient(model, theta_test)
 
@@ -52,17 +53,13 @@ def test_optimizer():
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)
-    model = mm.multinomial_model(X_FILE, y_test)
+    model = mm.multinomial_simplex_model(X_FILE, y_test)
     os.remove(X_FILE)
-    theta0 = np.random.normal(0, 1, model.T())
+    theta0 = np.random.dirichlet(0.7 * np.ones(model.T()))
     # Get high precision solution
-    theta_sol, f_sol, dict_sol = model.fit(theta0, factr=1.0, pgtol=1e-16)
-    # Compare against CG
-    func = lambda theta: -model.logp_grad(theta)[0]
-    fprime = lambda theta: -model.logp_grad(theta)[1]
-    CGResult = optimize.minimize(
-        func, theta0, method="CG", jac=fprime, options={"gtol": 1e-16}
-    )
-    assert np.linalg.norm(softmax(CGResult.x) - theta_sol)/np.linalg.norm(theta_sol) < 1e-04
-    assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-03
-    assert np.linalg.norm(dict_sol["grad"]) < 1e-03
+    theta_sol, f_sol, dict_sol = model.fit(theta0)
+    # Compare against something scipy optimizer?
+
+    # assert np.linalg.norm(CGResult.x - theta_sol) < 1e-04
+    # assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-04
+    # assert np.linalg.norm(dict_sol["grad"]) < 1e-04

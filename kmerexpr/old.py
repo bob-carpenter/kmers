@@ -17,7 +17,7 @@ print("fasta transcriptome file =", fasta_file)
 K = 5
 print("K =", K)
 
-M = 4 ** K
+M = 4**K
 print("M =", M)
 
 max_nz = 400 * 1000 * 1000

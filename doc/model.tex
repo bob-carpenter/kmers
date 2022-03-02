@@ -13,6 +13,7 @@
 %%% Rob's math commands
 \newcommand{\R}{\mathbb{R}} % Reals
 \newcommand{\N}{\mathbb{N}} % Naturals
+\newcommand{\Prob}[1]{\mathbb{P}\left[ #1\right] } % Naturals
 \newcommand{\diag}[1]{\mathbf{diag}\left( #1\right)}
 \newcommand{\mI}{{\bf I}}
 \usepackage{mathtools}
@@ -75,15 +76,16 @@ mdframed={
 \begin{figure}
 \centering
 \includegraphics[width=6cm]{transcipt-picture}
-\caption{Example of taking a transciptone, sampling a read, and breaking into $4$-mers and the resulting frequency matrix}
+\caption{Example of taking a transciptone, sampling a read, and breaking into $4$-mers and the resulting frequency matrix. \rob{Not a read, a subsequence of length $L$. Furthermore, need to take all subsequences of length $L$}}
 \label{fig:transcipt-picture}
 \end{figure}
 
 
 \rob{Questions}
 \begin{enumerate}
- \item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this?
-\item  To compare the two approaches of using simplex constraint or softmax, how can we determine which one works best? 
+ \item What will be our baseline of how ``well'' our method works? Compare it to the alignment method? Is there some convenient python code for this? $\norm{}$
+\item  To compare the two approaches of using simplex constraint or softmax, how can we determine which one works best? Shouldn't we be comparing against a larger reference transcriptome? Or do we subsample?
+\item Have we talked to the genomics group at flatiron?
 \end{enumerate}
 
 \rob{TODO}
@@ -312,7 +314,7 @@ the possibilities are as follows.
 \begin{table}[h!]
 \centering
   \begin{tabular}{l|l}
-    \textit{Reads} & 4\textit{-mers}
+    \textit{Subsequences} & 4\textit{-mers}
     \\ \hline \hline
     \texttt{ATGGCA} & \texttt{ATGG, TGGC, GGCA}
     \\ \hline
@@ -453,7 +455,7 @@ by a multinomial distribution with
   y \sim \textrm{multinomial}(X \cdot \theta).
 \]
 Here we have used  $X \cdot \theta$, that is the proportion of observed $K$-mers, as the probabilities of sampling a $K$-mer.
-
+\rob{Awkward point: $X \cdot \theta$ may have zero elements, and multinomial is only defined on probability vectors that are all non-zero. We can fix this numerically by looking only at the elements of  $X \cdot \theta$  that corespond to nonzero elements of $y$.}
 %
 %The sampling distribution $p(y \mid X, \alpha)$  for the observed
 %$K$-mer counts $y$ given the transcriptome matrix $X$ and log odds
@@ -553,7 +555,7 @@ that does not depend on the parameters $\alpha$ we have that
 \begin{align}\nonumber
   \log p(\alpha \mid X, y)& = \log p(y \mid X, \alpha) + \log p(\alpha) +
   \textrm{const.}  \\
-  &= y^{\top} \cdot \log \left( X^{\top} \cdot \textrm{softmax}(\alpha) \right)
+  &= y^{\top} \cdot \log \left( X \cdot \textrm{softmax}(\alpha) \right)
           - \frac{1}{2 \cdot \lambda^2} \cdot \alpha^{\top} \cdot \alpha +\textrm{const.}  \label{eq:posterior} 
 \end{align} 
  where the logarithm is applied elementwise over the vector $ X^{\top} \cdot \textrm{softmax}(\alpha).$ To determine the most likely parameters, we maximize the log posterior, that is
@@ -599,7 +601,23 @@ where $v\odot w = \sum_{i} v_i w_i e_i$ is the hadamard product. Consequently th
 
 \end{proof}
 
-Furthermore, $L(\alpha)$ is a smooth function, as we prove in the next lemma.
+Unfortunately this function~\eqref{eq:posterior} if typically non-concave and non-convex, when the prior constant $\lambda$ is large. To illustrate, and demonstrate this, we have created a simple example in Figure~\ref{fig:nonconvex}. Fortunately, by setting the prior constant $\lambda$ sufficiently small, we have that $L(\alpha)$ is concave, as we prove in the following lemma.
+
+\begin{figure}
+\centering
+\includegraphics[width=5cm]{./figures/slice_ell} \hspace{1cm} 
+\includegraphics[width=5cm]{./figures/slice_ell_reg}
+\caption{Plot of the posterior~\eqref{eq:posterior} in $\alpha$ where
+$ X~=~\begin{bmatrix}
+0.25 & 0.5 \\
+0.75 & 0.5
+\end{bmatrix}
+$ and $y = [1 , 1]$, where we have plotted along the line given by $\alpha_1 = - \alpha_2$ and Left: where $\lambda = 100$ and Right: $\lambda =\sqrt{3}$.
+\rob{These figures should be flipped on the $y$-axis because these as the negative log-likelihoods.}
+}
+\label{fig:nonconvex}
+\end{figure}
+
 \begin{lemma}
 It follows that 
 \begin{equation}\label{eq:Lhess}
@@ -656,61 +674,39 @@ and then simplifying using $\textrm{softmax}$.} of posterior using
 %require evaluating gradients of the posterior with respect to the parameters
 %$\alpha$.  The gradient is
 %%
-\[
-  \begin{array}{l}
+\begin{align}
   \nabla\!_{\alpha} \, \log p(\alpha \mid X, y) + \log p(\alpha)
-  \\[4pt]
-  \qquad = \
+& = \
     t \odot \textrm{softmax}(\alpha)
     - \textrm{softmax}(\alpha)^{\top}\! \cdot t \cdot \textrm{softmax}(\alpha)
-    - \frac{\displaystyle \alpha}{\displaystyle \lambda},
-\end{array}
-\]
+    - \frac{\displaystyle \alpha}{\displaystyle \lambda} \nonumber\\
+    &= t \odot \textrm{softmax}(\alpha)
+    - \mbox{sum}(y)\cdot \textrm{softmax}(\alpha)
+    - \frac{\displaystyle \alpha}{\displaystyle \lambda}
+\end{align}
 where
 \[
   t = X^{\top}\! \cdot (y \oslash (X \cdot \textrm{softmax}(\alpha)))
 \]
 and $\odot$ represents elementwise multiplication and $\oslash$
-elementwise division. 
-\rob{The second term can be greatly simplified since
+elementwise division. To arrive at the simplification we made to get the second equality we used that
 $$  t = X^{\top}\! \cdot (y \oslash (X \cdot \textrm{softmax}(\alpha))) =  X^{\top}\! \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y$$
-thus
-$$  \textrm{softmax}(\alpha)^{\top}\! \cdot t \cdot \textrm{softmax}(\alpha)  = 
- \textrm{softmax}(\alpha)^{\top}\! \cdot X^{\top}\! \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha)
-$$
-$$
- =(X  \textrm{softmax}(\alpha))^{\top} \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha)
- = \ones ^\top  y \cdot \textrm{softmax}(\alpha)
+and thus
+\begin{align*}
+  \textrm{softmax}(\alpha)^{\top}\! \cdot t \cdot \textrm{softmax}(\alpha) & = 
+ \textrm{softmax}(\alpha)^{\top}\! \cdot X^{\top}\! \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha) \\
+&= (X  \textrm{softmax}(\alpha))^{\top} \cdot \diag{X \cdot \textrm{softmax}(\alpha)}^{-1}  y \cdot \textrm{softmax}(\alpha) \\
+& = \ones ^\top  y \cdot \textrm{softmax}(\alpha)
  = \mbox{sum}(y)\cdot \textrm{softmax}(\alpha),
- $$
+\end{align*}
  where we used that $v^\top \diag{v}^{-1} = \ones^\top$. 
-}
-
-Unfortunately this function~\eqref{eq:posterior} if typically non-concave and non-convex, when the prior constant $\lambda$ is large. To illustrate, and demonstrate this, we have created a simple example in Figure~\ref{fig:nonconvex}. The reason~\eqref{eq:posterior} is  
-
-\begin{figure}
-\centering
-\includegraphics[width=5cm]{./figures/slice_ell} \hspace{1cm} 
-\includegraphics[width=5cm]{./figures/slice_ell_reg}
-\caption{Plot of the posterior~\eqref{eq:posterior} in $\alpha$ where
-$ X~=~\begin{bmatrix}
-0.25 & 0.5 \\
-0.75 & 0.5
-\end{bmatrix}
-$ and $y = [1 , 1]$, where we have plotted along the line given by $\alpha_1 = - \alpha_2$ and Left: where $\lambda = 100$ and Right: $\lambda =\sqrt{3}$.
-\rob{These figures should be flipped on the $y$-axis because these as the negative log-likelihoods.}
-}
-\label{fig:nonconvex}
-\end{figure}
-
-
 
 
 \subsection{Simplex Constraint}
 
 Instead of maximizing~\eqref{eq:posterior} using the softmax parametrization, we can instead impose the simplex as a constraint and solve
 \begin{align}
-\theta^* \; \in \; \arg \max_{\theta \in \Delta^G}  \log p(\theta \mid X, y) &= y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
+\theta^* \; \in \; \arg \max_{\theta \in \Delta^G}  \log p(\theta \mid X, y) &= y^{\top} \cdot \log \left( X \cdot \theta \right)
          +\log p(\theta)+\textrm{const.} \label{eq:posterior-const}
 \end{align} 
 As for the prior $p(\theta)$, since $\theta$ is in the simplex, we now choose a symmetric Dirchlet  prior over the parameters where
@@ -721,13 +717,13 @@ p(\theta) \; = \; \frac{\Gamma(\beta G)}{\Gamma(\beta)^G} \prod_{i=1}^G \theta_i
 where $\beta>0$ and $\Gamma$ is the gamma function $\Gamma(z) : = \int_{0}^{\infty} x^{z-1}e^{-x}dx.$
 Consequently~\eqref{eq:posterior-const} is equivalent to solving
  \begin{align}
-\theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X^{\top} \cdot \theta \right)
+\theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X \cdot \theta \right)
          +(\beta-1)\sum_{i=1}^G\theta_i =: f(\theta). \label{eq:posterior-const}
 \end{align} 
 For the above function $f(\theta)$ we have that
 \begin{align}
 \nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \ones\\
-&= X y \;\diag{X^\top \theta}^{-1}+ (\beta-1 ) \ones
+&= X^\top y \;\diag{X  \cdot\theta}^{-1}+ (\beta-1 ) \ones
 \end{align}
 We can solve~\eqref{eq:posterior-const} iteratively using the Exponentiated Gradient Descent (EGA) method. At each iteration, EGA minimizes a linearization of the objective together with KL divergence, that is
 \begin{align}\label{eq:EGA}
@@ -738,6 +734,35 @@ where $\gamma_t >0$ is a step length and $ KL(p,q) = \sum_i p_i \log\left(\frac{
 \theta^{t+1} &=  \frac{\theta^t_i \exp( \gamma_t  \nabla_{i}f(\theta^t) )}{\sum_{j=1}^G\theta^t_j \exp( \gamma_t  \nabla_{j}f(\theta^t) ) }.
 \end{align}
 Note that at every iteration we have that $\theta^t \in \Delta^G.$
+
+\subsubsection{Relative smoothness}
+
+Consider the density of the multinomial distribution
+\begin{equation}\label{eq:multi}
+p(x \; \mid \; \pi, N)\; = \;\frac{N!}{x_1! \ldots x_n!} \prod_{i=1}^n \pi_i^{x_i} \;= \;h(x) e^{\sum_{i=1}^n x_i \log(\pi_i)}
+\end{equation}
+where $\sum_{i=1}^n x_i = N$ and $h(x) =  \frac{n!}{x_1! \ldots x_n!} .$ In terms of the exponential family we have that the canonical parameters are $\eta = (\log(\pi_1), \ldots, \log(\pi_n))$, the sufficient statistics $S(x) = x$, the partition function $A(\eta)=0$. In the natural parameters we have that
+\[ p(x \; \mid \; \eta) \; =\; h(x) e^{ x^\top \eta}. \]
+
+Taking the derivative in $\eta$ of the log-likelihood is given by
+\[\nabla_{\eta}\log p(x \; \mid \; \eta)=  x. \]
+
+
+Alternatively, if we use that $\pi \in \Delta^n $ and $\sum_{i=1}^n x_i = N$ we can write $\pi_n = 1 - \sum_{j=1}^{n-1}\pi_{j}$ and $x_n = N- \sum_{i=1}^{n-1} x_i.$
+Using this  we have that~\eqref{eq:multi} is given by
+\begin{align}
+\label{eq:multisub}
+p(x \; \mid \; \pi) & = \frac{n!}{x_1! \ldots x_n!} (1 - \sum_{j=1}^{n-1}\pi_{j})^{N- \sum_{i=1}^{n-1} x_i} \prod_{i=1}^{n-1} \pi_i^{x_i} \nonumber \\
+&= \; h(x) (1 - \sum_{j=1}^{n-1}\pi_{j})^{N} \prod_{i=1}^{n-1} \left(\frac{\pi_i}{(1 - \sum_{j=1}^{n-1}\pi_{j})}\right)^{x_i} \nonumber \\
+& =\;h(x) e^{\sum_{i=1}^n x_i \log\left(\frac{\pi_i}{1 - \sum_{j=1}^{n-1}\pi_{j}}\right) + N\log(1 - \sum_{j=1}^{n-1}\pi_{j})} \nonumber \\
+& =\;h(x) e^{\sum_{i=1}^n x_i \eta_i + N\log(1 - \sum_{j=1}^{n-1}\pi_{j})} 
+\end{align}
+
+
+\rob{Is the objective relatively smooth with respect to the KL divergence? Is so, then smoothness dictates the stepsize. Read here \url{https://arxiv.org/pdf/2202.12843.pdf}. Also, didn't mark Schmidt prove already relative smooth for the log likelihood of the entire exponential family? And multinomial is a special see here \url{http://www.cs.cmu.edu/~epxing/Class/10708-16/note/10708_scribe_lecture5.pdf}}
+That is
+\[\nabla^2 \log(x^\top \theta) =   \]
+
 %we could use entropy, that is $p(\theta) = -\sum_{i=1}^G \theta_i \log(\theta_i).$ But what does this mean in terms of probabilistic assumptions?
 %
 %The advantage of~\eqref{eq:posterior-const} is that, with a strongly convex prior, the resulting optimization problem is strongly convex and smooth, and thus can be provenly solve with L-BFGS.
