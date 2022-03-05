@@ -29,10 +29,8 @@ def simulate_reads(file_name, N, L):  #
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
-    # if(T < N):
-    #     print("WARNING!!!: number of reads ", N, " is greater than the number of isoforms ", T)
-    beta = np.random.uniform(0, 1)
-    alpha = beta* np.ones(T)
+    # beta = np.random.uniform(0, 1)
+    alpha = np.ones(T)
     theta = np.random.dirichlet(alpha)
     print("theta[0:10] =", theta[0:10])
     print("theta[K-10:K] =", theta[T - 10 : T])

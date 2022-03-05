@@ -79,6 +79,7 @@ class multinomial_model:
         self.x = load_npz(x_file)
         self.y = y
         self.N = np.sum(y)
+        self.name = "softmax+lbfgs"
 
     def M(self):
         return self.x.shape[0]

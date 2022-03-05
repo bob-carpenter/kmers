@@ -54,7 +54,7 @@ class multinomial_simplex_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y=None, beta=0.5):
+    def __init__(self, x_file=None, y=None, beta=2.0):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -101,10 +101,10 @@ class multinomial_simplex_model:
         ymask = y.nonzero()
         ynnz = y[ymask]  # Need only consider coordinates where y is nonzero
         xthetannz = xtheta[ymask]
-        functionValue = ynnz.dot(np.log(xthetannz)) + self.beta - 1
+        functionValue = ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(theta))
         yxTtheta = ynnz / xthetannz
         t1 = x[ymask].T.dot(yxTtheta)
-        gradient = t1 + self.beta - 1
+        gradient = t1 + (self.beta - 1)/theta
         return functionValue, gradient
 
     def fit(self, theta=None, tol=10.0**(-4), gtol=1e-10, n_iters = 10000, lrs =0.1*np.ones(1)):

@@ -718,12 +718,12 @@ where $\beta>0$ and $\Gamma$ is the gamma function $\Gamma(z) : = \int_{0}^{\inf
 Consequently~\eqref{eq:posterior-const} is equivalent to solving
  \begin{align}
 \theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X \cdot \theta \right)
-         +(\beta-1)\sum_{i=1}^G\theta_i =: f(\theta). \label{eq:posterior-const}
+         +(\beta-1)\sum_{i=1}^G\log\theta_i =: f(\theta). \label{eq:posterior-const}
 \end{align} 
 For the above function $f(\theta)$ we have that
 \begin{align}
-\nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \ones\\
-&= X^\top y \;\diag{X  \cdot\theta}^{-1}+ (\beta-1 ) \ones
+\nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \diag{\theta}^{-1} \ones\\
+&= X^\top y \;\diag{X  \cdot\theta}^{-1}+ (\beta-1 ) \diag{\theta}^{-1} \ones
 \end{align}
 We can solve~\eqref{eq:posterior-const} iteratively using the Exponentiated Gradient Descent (EGA) method. At each iteration, EGA minimizes a linearization of the objective together with KL divergence, that is
 \begin{align}\label{eq:EGA}
@@ -734,6 +734,11 @@ where $\gamma_t >0$ is a step length and $ KL(p,q) = \sum_i p_i \log\left(\frac{
 \theta^{t+1} &=  \frac{\theta^t_i \exp( \gamma_t  \nabla_{i}f(\theta^t) )}{\sum_{j=1}^G\theta^t_j \exp( \gamma_t  \nabla_{j}f(\theta^t) ) }.
 \end{align}
 Note that at every iteration we have that $\theta^t \in \Delta^G.$
+
+\rob{Relative smoothness lower bound}
+\[ y\log(x) \geq^? y \log(w) + y\frac{x-w}{w} + L \cdot KL(x,w)\]
+Re-arranging
+\[y \log \left(\frac{x}{w}\right)-y\frac{x}{w} +y \geq   L \cdot \left( x\log\left(\frac{x}{w}\right)-x+w \right)\]
 
 \subsubsection{Relative smoothness}
 
@@ -754,10 +759,32 @@ Using this  we have that~\eqref{eq:multi} is given by
 \label{eq:multisub}
 p(x \; \mid \; \pi) & = \frac{n!}{x_1! \ldots x_n!} (1 - \sum_{j=1}^{n-1}\pi_{j})^{N- \sum_{i=1}^{n-1} x_i} \prod_{i=1}^{n-1} \pi_i^{x_i} \nonumber \\
 &= \; h(x) (1 - \sum_{j=1}^{n-1}\pi_{j})^{N} \prod_{i=1}^{n-1} \left(\frac{\pi_i}{(1 - \sum_{j=1}^{n-1}\pi_{j})}\right)^{x_i} \nonumber \\
-& =\;h(x) e^{\sum_{i=1}^n x_i \log\left(\frac{\pi_i}{1 - \sum_{j=1}^{n-1}\pi_{j}}\right) + N\log(1 - \sum_{j=1}^{n-1}\pi_{j})} \nonumber \\
-& =\;h(x) e^{\sum_{i=1}^n x_i \eta_i + N\log(1 - \sum_{j=1}^{n-1}\pi_{j})} 
+& =\;h(x) e^{\sum_{i=1}^{n-1} x_i \log\left(\frac{\pi_i}{1 - \sum_{j=1}^{n-1}\pi_{j}}\right) + N\log(1 - \sum_{j=1}^{n-1}\pi_{j})} \nonumber \\
+& =\;h(x) e^{\sum_{i=1}^{n-1} x_i \eta_i + A(\eta)} 
 \end{align}
+where
+\begin{align*}
+\eta_i &= \log\left(\frac{\pi_i}{1 - \sum_{j=1}^{n-1}\pi_{j}}\right), \quad \mbox{for }i=1,\ldots,n-1. \\ 
+\pi_i & = \frac{e^{\eta_i}}{1+ \sum_{j=1}^{n-1}e^{\eta_{j}}}, \quad \mbox{for }i=1,\ldots,n-1. \\ 
+A(\eta) &= N\log(1 - \sum_{j=1}^{n-1}\pi_{j}) \; = \; -N\log(1 + \sum_{j=1}^{n-1}e^{\eta_{j}}).
+\end{align*}
+This now fits the format of the exponential family. Furthermore, the $\eta$'s are only unconstrained.
 
+Thus the log-likelihood in this case is given by
+\begin{equation}
+\log p(x \; \mid \; \eta)=  h(x) +x^\top \eta -N\log(1 + \sum_{j=1}^{n-1}e^{\eta_{j}}).
+\end{equation}
+So we could solve this model, and then recover $\theta$ by solving the linear system
+\[X \cdot \theta = \pi.\]
+This linear system is probably over-determined, so we can use the least-squares solution.
+
+
+Taking the derivative in $\eta$ of the log-likelihood is given by
+\[\nabla_{\eta}\log p(x \; \mid \; \eta)=  x + \nabla A(\eta) = x -\frac{1}{1 + \sum_{j=1}^{n-1}e^{\eta_{j}}} e^{\eta}. \]
+Setting to zero and isolating we have that
+\[ \eta = \log(x) + \log\left(1 + \sum_{j=1}^{n-1}e^{\eta_{j}}\right).\]
+\rob{We could solve this nonlinear equation using regularized Newton or something? }
+\rob{Start again, need to differentiate through $\theta$ and $\pi = X\cdot \theta$. Maybe the relative smoothness bound still holds?}
 
 \rob{Is the objective relatively smooth with respect to the KL divergence? Is so, then smoothness dictates the stepsize. Read here \url{https://arxiv.org/pdf/2202.12843.pdf}. Also, didn't mark Schmidt prove already relative smooth for the log likelihood of the entire exponential family? And multinomial is a special see here \url{http://www.cs.cmu.edu/~epxing/Class/10708-16/note/10708_scribe_lecture5.pdf}}
 That is

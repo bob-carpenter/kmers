@@ -10,7 +10,7 @@ def prod_exp_normalize(x,y):
     u = x*np.exp(y - b)
     return u / u.sum()
 
-def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-3.0), gtol = 10**(-4.0),  n_iters = 10000, verbose=True):
+def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True):
     """
     Exponentiated Gradient Descent for minimizing
     max l(x)  s.t. sum(x) = 1 and x>0
@@ -30,13 +30,14 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-3.0), gtol = 10**(-4.0)
     for iter in range(n_iters):
         
         if lrs is None:
-            lrst = 0.5
+            lrst = 2**(1/2)/(np.linalg.norm(grad, np.inf)*np.sqrt(iter+1) )
         elif lrs.shape == (1,):
             lrst = lrs[0]
         else:
             lrst = lrs[iter]
         # alternative update using prod exp function
         # x = prod_exp_normalize(x, lrst*grad)
+        x_old = x.copy()
         x = softmax(np.log(x) +lrst*grad)  # 
         loss, grad  = loss_grad(x)
         # print(iter, "loss: ", loss)
@@ -44,8 +45,9 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-3.0), gtol = 10**(-4.0)
         if (iter + 1) % num_steps_between_tolerance_check == 0:
             relative_grad_norm = np.sqrt(grad @ grad)/normg0
             relative_loss = loss/loss0
-            if relative_grad_norm <= gtol or relative_loss <= tol:
-                print("Exponential grad reaches the tolerance: " + str(tol))
+            if np.linalg.norm(x_old - x) <= tol: 
+            # if relative_grad_norm <= gtol or relative_loss <= tol: ## Makes no sense now
+                print("Exponential grad iterates are less than: " + str(tol), " apart. Stopping")
                 break
 
         if (iter + 1) % num_steps_between_snapshot == 0:
