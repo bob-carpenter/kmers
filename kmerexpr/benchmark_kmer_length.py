@@ -27,11 +27,11 @@ else:
 filename =  "GRCh38_latest_rna.fna"
 Ks = [ 1, 2,  3,  5, 7, 11, 13, 14, 15]  #,14, 15
 N = 5000000  # Number of reads
-L = 100  # length of read
+L = 80  # length of read
 
 
 ## Generate data, with ground truth theta
-READS_FILE = sr.simulate_reads(filename, N, L)  # Only do this once
+READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=True)  # Only do this once
 theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
 # Ks_o, errors_lbfgs_o = load_results(filename, N, L)
 n_repeat = 1
@@ -41,7 +41,7 @@ error_true_list = []
 for i in range(n_repeat):
     for K in Ks:
         print("K: ", K)
-        theta_opt = run_model_load_and_save(filename, model, N, L, K, load_old = True, n_iters= 1000)
+        theta_opt = run_model_load_and_save(filename, model, N, L, K, load_old = False, n_iters= 2000)
         # theta_opt,  f_sol, dict_sol = run_model(filename, model, N, L, K, n_iters= 1000)
         # save_run_result(filename, N, L,  K, dict_sol)
         err = np.linalg.norm(theta_true - theta_opt, ord=1) # / np.linalg.norm(theta_true - theta0)

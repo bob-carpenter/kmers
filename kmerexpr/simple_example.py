@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # N = 5000000
     # L = 70
     filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 1
+    K = 2
     N = 1000
     L = 14
 
@@ -29,18 +29,18 @@ if __name__ == '__main__':
     toc = time.perf_counter()
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
     # Create y and X and save to file 
     reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
 
-    model = msm.multinomial_simplex_model(X_FILE, Y_FILE, beta = 0.5) # initialize model
+    model = msm.multinomial_simplex_model(X_FILE, Y_FILE, beta = 0.1) # initialize model
     # Initialize theta0
     alpha = np.ones(model.T())
     theta0 = alpha/alpha.sum()
 
     tic = time.perf_counter()
-    theta, f_sol, dict_results= model.fit(theta0, n_iters =100, batchsize = "full")
+    theta, f_sol, dict_results= model.fit(theta0, n_iters =100)
     toc = time.perf_counter()
     print(f"Fitting model took {toc - tic:0.4f} seconds")
 

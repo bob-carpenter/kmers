@@ -13,13 +13,13 @@ import random
 import time
 
 
-def run_model_load_and_save(filename, model_class, N, L, K, load_old = True, n_iters = 5000):
+def run_model_load_and_save(filename, model_class, N, L, K, load_old = False, n_iters = 5000, force_repeat = True):
     # Fixing the seed to reproduce results
 
     dict_old = None
     if load_old:
         dict_old = load_run_result(filename, N, L,  K)
-    theta_opt,  f_sol_div_d0, dict_new = run_model(filename, model_class, N, L, K, n_iters = n_iters, dict_old = dict_old) # , batchsize= "full"
+    theta_opt,  f_sol_div_d0, dict_new = run_model(filename, model_class, N, L, K, n_iters = n_iters, dict_old = dict_old, force_repeat = force_repeat) # , batchsize= "full"
     theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
     print('Distance theta_opt to theta_true: ', np.linalg.norm(theta_opt - theta_true, ord =1))
     print('Distance theta_av to theta_true: ', np.linalg.norm(dict_new['x_av'] - theta_true, ord =1))
@@ -31,9 +31,9 @@ def run_model_load_and_save(filename, model_class, N, L, K, load_old = True, n_i
 
 
 
-def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, dict_old =None):
+def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, dict_old =None, force_repeat = True):
    # Need to check if y and X already exit. And if so, just load them.
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
     
     if dict_old == None:
         theta0 = None
@@ -43,9 +43,9 @@ def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, 
         continue_from = dict_old["iteration_counts"][-1]
 
     tic = time.perf_counter()
-    if os.path.exists(Y_FILE) is False:
+    if os.path.exists(Y_FILE) is False or force_repeat is True:
         y = reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
-    if os.path.exists(X_FILE) is False:
+    if os.path.exists(X_FILE) is False or force_repeat is True:
         tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
     toc = time.perf_counter()
     ## Fit model

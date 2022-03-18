@@ -12,7 +12,7 @@ def simulate_reads(filename, N, L, force_repeat=False):  #
     L = length of read
     N = number of reads, must be greater than number of isoforms in ISO_FILE
     """
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K=1) # dont worry about this K=1. It only affects the Y_FILE, which is not used here
     if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed
         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
         return READS_FILE

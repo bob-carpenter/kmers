@@ -122,10 +122,10 @@ class multinomial_simplex_model:
 
     def fit(self, theta=None, tol=1e-5, gtol=1e-5, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
 
-        if batchsize is None:
+        if batchsize is not None:
             batchsize = int(self.M()/5)
-        elif batchsize == "full":
-            batchsize = None
+        # elif batchsize == "full":
+        #     batchsize = None
 
         dict_sol = exp_grad_solver(self.logp_grad, theta, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M(), continue_from = continue_from)
 
