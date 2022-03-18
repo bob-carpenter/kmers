@@ -59,7 +59,13 @@ def test_optimizer():
     # Get high precision solution
     theta_sol, f_sol, dict_sol = model.fit(theta0)
     # Compare against something scipy optimizer?
-
+    # cons = (
+    #     {"type": "ineq", "fun": lambda x: x[0] - 2 * x[1] + 2},
+    #     {"type": "ineq", "fun": lambda x: -x[0] - 2 * x[1] + 6},
+    #     {"type": "ineq", "fun": lambda x: -x[0] + 2 * x[1] + 2},
+    # )
+    # bnds = (0, 1)
+    # theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)
     # assert np.linalg.norm(CGResult.x - theta_sol) < 1e-04
     # assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-04
     # assert np.linalg.norm(dict_sol["grad"]) < 1e-04

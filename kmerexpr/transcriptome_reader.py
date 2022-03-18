@@ -52,7 +52,7 @@ def transcriptome_to_x(
         pos = 0
         for s in parser:
             if n % 5000 == 0:
-                print("seqs read = ", n)
+                print("seqs iso = ", n)
             if "PREDICTED" in s.header:
                 continue
             seq = s.sequence

@@ -720,6 +720,13 @@ Consequently~\eqref{eq:posterior-const} is equivalent to solving
 \theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X \cdot \theta \right)
          +(\beta-1)\sum_{i=1}^G\log\theta_i =: f(\theta). \label{eq:posterior-const}
 \end{align} 
+
+% \begin{align}
+%\theta^* \; \in \; \arg \max_{\theta \in \Delta^d}   \sum_{i=1} y_i \cdot \log \left( x_i^\top \theta \right)
+%         +(\beta-1)\sum_{i=1}^n\log\theta_i. \label{eq:posterior-const}
+%\end{align} 
+
+
 For the above function $f(\theta)$ we have that
 \begin{align}
 \nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \diag{\theta}^{-1} \ones\\
@@ -733,7 +740,11 @@ where $\gamma_t >0$ is a step length and $ KL(p,q) = \sum_i p_i \log\left(\frac{
 \begin{align}\label{eq:EGAupdate}
 \theta^{t+1} &=  \frac{\theta^t_i \exp( \gamma_t  \nabla_{i}f(\theta^t) )}{\sum_{j=1}^G\theta^t_j \exp( \gamma_t  \nabla_{j}f(\theta^t) ) }.
 \end{align}
-Note that at every iteration we have that $\theta^t \in \Delta^G.$
+Note that at every iteration we have that $\theta^t \in \Delta^G.$ The $\gamma_t$ are the step size, for which we use
+
+\begin{equation}
+\gamma_t \; := \; \frac{\sqrt{2}}{\norm{\nabla f(\theta^t) }_{\infty} \sqrt{t+1}}
+\end{equation}
 
 \rob{Relative smoothness lower bound}
 \[ y\log(x) \geq^? y \log(w) + y\frac{x-w}{w} + L \cdot KL(x,w)\]
@@ -774,6 +785,26 @@ Thus the log-likelihood in this case is given by
 \begin{equation}
 \log p(x \; \mid \; \eta)=  h(x) +x^\top \eta -N\log(1 + \sum_{j=1}^{n-1}e^{\eta_{j}}).
 \end{equation}
+
+According to Proposition 1 in~\cite{MarkEM} we have that the negative loglikelihood $L(\eta) : = -\log p(x \; \mid \; \eta)$ has a smooth lower bound given by
+\begin{align*}
+L(\eta) \; \leq \;  L(\eta^0) +  \dotprod{ \nabla L(\eta^0), \eta -\eta^0  } + D_A(\eta,\eta_0)
+\end{align*}
+where $D_A(\eta,\eta_0)$ is the divergence induced by the partition function $A(\eta)$, that is
+\begin{align}
+D_A(\eta,\eta_0) \; : = \; A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta - \eta_0}
+\end{align}
+Plugging in the definition of $L$ and $D_A$ we have that
+
+\begin{align*}
+x^\top \eta +A(\eta)& \leq \; x^\top \eta^0+A(\eta^0)+  \dotprod{ x+\nabla A(\eta^0), \eta -\eta^0  } + A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta - \eta_0}\\
+& \implies \\
+x^\top \eta & \leq  x^\top \eta^0 + \dotprod{ x, \eta -\eta^0  } 
+\end{align*}
+So it is true but also vacuously so? What is now the point of mapping back to $\theta$ and looking at the resulting bound? It does not seem informative.
+
+
+\rob{Recovering $\theta$}
 So we could solve this model, and then recover $\theta$ by solving the linear system
 \[X \cdot \theta = \pi.\]
 This linear system is probably over-determined, so we can use the least-squares solution.
@@ -784,7 +815,7 @@ Taking the derivative in $\eta$ of the log-likelihood is given by
 Setting to zero and isolating we have that
 \[ \eta = \log(x) + \log\left(1 + \sum_{j=1}^{n-1}e^{\eta_{j}}\right).\]
 \rob{We could solve this nonlinear equation using regularized Newton or something? }
-\rob{Start again, need to differentiate through $\theta$ and $\pi = X\cdot \theta$. Maybe the relative smoothness bound still holds?}
+
 
 \rob{Is the objective relatively smooth with respect to the KL divergence? Is so, then smoothness dictates the stepsize. Read here \url{https://arxiv.org/pdf/2202.12843.pdf}. Also, didn't mark Schmidt prove already relative smooth for the log likelihood of the entire exponential family? And multinomial is a special see here \url{http://www.cs.cmu.edu/~epxing/Class/10708-16/note/10708_scribe_lecture5.pdf}}
 That is

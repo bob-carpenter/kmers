@@ -22,7 +22,7 @@ import numpy as np
 from scipy.sparse import load_npz
 from scipy.special import softmax as softmax
 from scipy import optimize
-
+import time
 
 # BMW: Class names are usually done in CamelCase style
 class multinomial_model:
@@ -67,7 +67,7 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y=None):
+    def __init__(self, x_file=None, y_file=None):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -77,8 +77,8 @@ class multinomial_model:
         N -- total number of k-mers
         """
         self.x = load_npz(x_file)
-        self.y = y
-        self.N = np.sum(y)
+        self.y = np.load(y_file)
+        self.N = np.sum(self.y)
         self.name = "softmax+lbfgs"
 
     def M(self):
@@ -121,9 +121,12 @@ class multinomial_model:
         # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
-    def fit(self, theta=None, factr=10.0, pgtol=1e-10):
+    def fit(self, theta=None, factr=10.0, gtol=1e-10, n_iters = 10000):
         func = lambda theta: -self.logp_grad(theta)[0]
         fprime = lambda theta: -self.logp_grad(theta)[1]
-        theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)
+        start = time.time()
+        theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime, pgtol = gtol, factr = factr, maxiter=n_iters)
+        end = time.time()
+        print("softmax model took ", end - start, " time to fit")
         dict_sol["grad"] = -dict_sol["grad"]
         return softmax(theta_sol), -f_sol, dict_sol

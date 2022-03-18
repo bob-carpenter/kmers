@@ -23,6 +23,22 @@ from scipy.sparse import load_npz
 from scipy import optimize
 from exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
+# from numba import jit
+
+
+def logp_grad_(beta, theta, x, y ):
+    xtheta = x.dot(theta) #softmax(x.dot(theta) +eps)
+    ymask = y.nonzero()
+    ynnz = y[ymask]  # Need only consider coordinates where y is nonzero
+    xthetannz = xtheta[ymask]
+    functionValue = ynnz.dot(np.log(xthetannz)) + (beta - 1)*np.sum(np.log(theta))
+    yxTtheta = ynnz / xthetannz
+    t1 = x[ymask].T.dot(yxTtheta)
+    gradient = t1 + (beta - 1)/theta
+    return functionValue, gradient
+
+
+
 # BMW: Class names are usually done in CamelCase style
 class multinomial_simplex_model:
     """Multinomial model of k-mer reads with a simplex constraint
@@ -54,7 +70,7 @@ class multinomial_simplex_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y=None, beta=2.0):
+    def __init__(self, x_file=None, y_file=None, beta=1.0):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -64,9 +80,10 @@ class multinomial_simplex_model:
         N -- total number of k-mers
         """
         self.x = load_npz(x_file)
-        self.y = y
-        self.N = np.sum(y)
+        self.y = np.load(y_file)
+        self.N = np.sum(self.y)
         self.beta = beta
+        self.name = "mirror"
 
     def M(self):
         return self.x.shape[0]
@@ -74,7 +91,7 @@ class multinomial_simplex_model:
     def T(self):
         return self.x.shape[1]
 
-    def logp_grad(self, theta=None, eps = 10**(-10)):
+    def logp_grad(self, theta=None, eps = 10**(-10), batch = None):
         """Return negative log density and its gradient evaluated at the
         specified simplex.
          loss(theta) = y' log(X'theta) + (beta-1 )
@@ -96,26 +113,21 @@ class multinomial_simplex_model:
         y_rows = dim[0]
         assert y_rows == x_rows
         assert theta_rows == x_cols
-        # import pdb; pdb.set_trace()
-        xtheta = x.dot(theta) #softmax(x.dot(theta) +eps)
-        ymask = y.nonzero()
-        ynnz = y[ymask]  # Need only consider coordinates where y is nonzero
-        xthetannz = xtheta[ymask]
-        functionValue = ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(theta))
-        yxTtheta = ynnz / xthetannz
-        t1 = x[ymask].T.dot(yxTtheta)
-        gradient = t1 + (self.beta - 1)/theta
-        return functionValue, gradient
+        if isinstance(batch,(np.ndarray)):
+            return logp_grad_(self.beta, theta, x[batch], y[batch] )
+        else:
+            return logp_grad_(self.beta, theta, x, y )
+            
 
-    def fit(self, theta=None, tol=10.0**(-4), gtol=1e-10, n_iters = 10000, lrs =0.1*np.ones(1)):
-        # loss_grad = lambda x: self.logp_grad(x)
-        dict_sol = exp_grad_solver(self.logp_grad, theta, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters)
-        # cons = (
-        #     {"type": "ineq", "fun": lambda x: x[0] - 2 * x[1] + 2},
-        #     {"type": "ineq", "fun": lambda x: -x[0] - 2 * x[1] + 6},
-        #     {"type": "ineq", "fun": lambda x: -x[0] + 2 * x[1] + 2},
-        # )
-        # bnds = (0, 1)
-        # theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)
+
+    def fit(self, theta=None, tol=1e-5, gtol=1e-5, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
+
+        if batchsize is None:
+            batchsize = int(self.M()/5)
+        elif batchsize == "full":
+            batchsize = None
+
+        dict_sol = exp_grad_solver(self.logp_grad, theta, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M(), continue_from = continue_from)
+
         f_sol = dict_sol['loss_records'][-1]
-        return dict_sol['x'], f_sol, dict_sol  #{'x' : x, 'norm_records' : norm_records, 'loss_records' : loss_records, 'time_records' : time_records }
+        return dict_sol['x'], f_sol, dict_sol  

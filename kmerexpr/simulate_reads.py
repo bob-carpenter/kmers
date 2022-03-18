@@ -1,18 +1,21 @@
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
 from utils import get_path_names
-
-
-def simulate_reads(file_name, N, L):  #
+from utils import save_theta_true_and_theta_sampled
+from os import path
+def simulate_reads(filename, N, L, force_repeat=False):  #
     """
-    file_name:  a string that will be the surfix of generated data where
-                "read"+file_name will be reads data
-                "x"+file_name the transciptome matrix
-                "theta"+file_name the ground truth theta used to generate the data
+    filename:  a string that will be the surfix of generated data where
+                "read"+filename will be reads data
+                "x"+filename the transciptome matrix
+                "theta"+filename the ground truth theta used to generate the data
     L = length of read
     N = number of reads, must be greater than number of isoforms in ISO_FILE
     """
-    ISO_FILE, READS_FILE, X_FILE, THETA_FILE = get_path_names(file_name, N, L)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L)
+    if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed
+        print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
+        return READS_FILE
     isoforms = []
     with open(ISO_FILE, "r") as f:
         parser = fastaparser.Reader(f, parse_method="quick")
@@ -24,23 +27,25 @@ def simulate_reads(file_name, N, L):  #
             if len(seq) < L:
                 continue
             if pos % 10000 == 0:
-                print("seqs read = ", pos)
+                print("sim seqs read = ", pos)
             isoforms.append(seq)
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
     # beta = np.random.uniform(0, 1)
     alpha = np.ones(T)
-    theta = np.random.dirichlet(alpha)
-    print("theta[0:10] =", theta[0:10])
-    print("theta[K-10:K] =", theta[T - 10 : T])
-    np.save(THETA_FILE, theta)
-    y = np.random.choice(T, size=N, replace=True, p=theta)
+    theta_true = np.random.dirichlet(alpha)
+    print("theta[0:10] =", theta_true[0:10])
+    print("theta[K-10:K] =", theta_true[T - 10 : T])
+    y_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
+    hist, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
+    theta_sampled = hist/N
+    save_theta_true_and_theta_sampled(filename, N, L, theta_true, theta_sampled)
     with open(READS_FILE, "w") as out:
         for n in range(N): #range(T): Rob: Used to be number of isoforms, but that's incorrect? We are writing the reads file, which has N rows
             if (n + 1) % 100000 == 0:
                 print("sim n = ", n + 1)
-            seq = isoforms[y[n]]
+            seq = isoforms[y_sampled[n]]
             start = np.random.choice(len(seq) - L + 1)
             out.write(">sim-")
             out.write(str(n))

@@ -3,8 +3,7 @@ from collections import Counter
 from transcriptome_reader import valid_kmer, shred, kmer_to_id
 import fastaparser
 
-
-def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32):
+def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None):
     print("K =", K)
     print("fasta file =", READS_FILE)
     print("float type =", float_t)
@@ -25,4 +24,6 @@ def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32):
                 id = kmer_to_id(kmer)
                 y[id] += count
             n += 1
+    if Y_FILE is not None:
+        np.save(Y_FILE, y)
     return y
