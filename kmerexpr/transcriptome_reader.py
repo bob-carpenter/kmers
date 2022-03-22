@@ -1,4 +1,4 @@
-from scipy.sparse import csr_matrix, save_npz  # BSD-3
+from scipy.sparse import csr_matrix, save_npz, load_npz  # BSD-3
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
 from collections import Counter
@@ -51,7 +51,7 @@ def transcriptome_to_x(
         col_ind = np.zeros(max_nz, dtype=int_t)
         pos = 0
         for s in parser:
-            if n % 5000 == 0:
+            if n % 10000 == 0:
                 print("seqs iso = ", n)
             if "PREDICTED" in s.header:
                 continue
@@ -78,6 +78,3 @@ def transcriptome_to_x(
     print("saving csr matrix to file = ", x_file)
     save_npz(x_file, xt)
 
-
-def get_theta_truth(theta_file):
-    return np.load(theta_file)

@@ -26,7 +26,7 @@ def simulate_reads(filename, N, L, force_repeat=False):  #
             seq = s.sequence
             if len(seq) < L:
                 continue
-            if pos % 10000 == 0:
+            if pos % 100000 == 0:
                 print("sim seqs read = ", pos)
             isoforms.append(seq)
             pos += 1

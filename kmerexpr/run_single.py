@@ -14,17 +14,18 @@ import time
 
 
 def run_model_load_and_save(filename, model_class, N, L, K, load_old = False, n_iters = 5000, force_repeat = True):
-    # Fixing the seed to reproduce results
-
     dict_old = None
-    if load_old:
+    if load_old and force_repeat is False:
         dict_old = load_run_result(filename, N, L,  K)
+    elif load_old and force_repeat is True:
+        print("ERROR: Cannot load old results when simulations are repeated. Please set load_old = False when force_repeat = True")
+
     theta_opt,  f_sol_div_d0, dict_new = run_model(filename, model_class, N, L, K, n_iters = n_iters, dict_old = dict_old, force_repeat = force_repeat) # , batchsize= "full"
     theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
     print('Distance theta_opt to theta_true: ', np.linalg.norm(theta_opt - theta_true, ord =1))
     print('Distance theta_av to theta_true: ', np.linalg.norm(dict_new['x_av'] - theta_true, ord =1))
 
-    if load_old:
+    if load_old and force_repeat is False:
         dict_new = merge_run_model_Dictionaries(dict_old, dict_new)  # merge previous dictionary with new dictionary
     save_run_result(filename, N, L,  K, dict_new) # saving latest solution
     return theta_opt
@@ -35,7 +36,7 @@ def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, 
    # Need to check if y and X already exit. And if so, just load them.
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
     
-    if dict_old == None:
+    if dict_old == None or force_repeat:
         theta0 = None
         continue_from = 0
     else:
@@ -44,13 +45,14 @@ def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, 
 
     tic = time.perf_counter()
     if os.path.exists(Y_FILE) is False or force_repeat is True:
+        print("Generating ", Y_FILE)
         y = reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
     if os.path.exists(X_FILE) is False or force_repeat is True:
+        print("Generating ", X_FILE)
         tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
     toc = time.perf_counter()
     ## Fit model
     model = model_class(X_FILE, Y_FILE)
-
     print(f"Generated/loaded y and X  in {toc - tic:0.4f} seconds")
     if theta0 is None:
         if model.name == "mirror": # We should be using alpha parameter less than one, push towards boundaries
@@ -78,15 +80,21 @@ if __name__ == '__main__':
     else:
         model_class = msm.multinomial_simplex_model
 
-    filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 1
-    N = 5000000
-    L = 70
-    
+
+    filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
+    K = 2
+    N = 1000
+    L = 14
+
+    # filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+    # K = 1
+    # N = 5000000
+    # L = 70
+    force_repeat = False
     tic = time.perf_counter()
-    READS_FILE = sr.simulate_reads(filename, N, L)  # force_repeat=True to force repeated simulation
+    READS_FILE = sr.simulate_reads(filename, N, L, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
-    run_model_load_and_save(filename, model_class, N, L, K, load_old = True, n_iters = 1000)
+    run_model_load_and_save(filename, model_class, N, L, K, load_old = True, n_iters = 100, force_repeat = force_repeat)
 

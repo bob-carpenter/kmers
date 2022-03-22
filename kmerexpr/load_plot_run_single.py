@@ -1,15 +1,10 @@
 import multinomial_model as mm
 import multinomial_simplex_model as msm
-import transcriptome_reader as tr
-import simulate_reads as sr
-from rna_seq_reader import reads_to_y
 import numpy as np
 
 from plotting import plot_scatter_theta, plot_error_vs_iterations
-from utils import run_model
 from utils import load_theta_true_and_theta_sampled
-from utils import save_run_result, load_run_result
-from utils import merge_run_model_Dictionaries
+from utils import load_run_result
 import random
 import time
 
@@ -26,10 +21,11 @@ if __name__ == '__main__':
         model = msm.multinomial_simplex_model
 
     filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 1
-    N = 5000000
-    L = 70
-    # K = 1
+    K = 13  #,14, 15
+    N = 5000000  # Number of reads
+    L = 80 
+    # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
+    # K = 2
     # N = 1000
     # L = 14
     dict_results = load_run_result(filename, N, L,  K)

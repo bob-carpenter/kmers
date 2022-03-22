@@ -2,7 +2,6 @@ import multinomial_model as mm
 import multinomial_simplex_model as msm
 import transcriptome_reader as tr
 import simulate_reads as sr
-from rna_seq_reader import reads_to_y
 import numpy as np
 from plotting import plot_general
 from run_single import run_model, run_model_load_and_save
@@ -29,9 +28,10 @@ Ks = [ 1, 2,  3,  5, 7, 11, 13, 14, 15]  #,14, 15
 N = 5000000  # Number of reads
 L = 80  # length of read
 
-
+force_repeat = True
+load_old = False
 ## Generate data, with ground truth theta
-READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=True)  # Only do this once
+READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=force_repeat)  # Only do this once
 theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
 # Ks_o, errors_lbfgs_o = load_results(filename, N, L)
 n_repeat = 1
@@ -41,21 +41,20 @@ error_true_list = []
 for i in range(n_repeat):
     for K in Ks:
         print("K: ", K)
-        theta_opt = run_model_load_and_save(filename, model, N, L, K, load_old = False, n_iters= 2000)
+        theta_opt = run_model_load_and_save(filename, model, N, L, K, load_old = load_old, n_iters= 5000, force_repeat = force_repeat)
         # theta_opt,  f_sol, dict_sol = run_model(filename, model, N, L, K, n_iters= 1000)
         # save_run_result(filename, N, L,  K, dict_sol)
         err = np.linalg.norm(theta_true - theta_opt, ord=1) # / np.linalg.norm(theta_true - theta0)
         error_true.append(err)
-        save_kmer_length_results(filename+'-'+model_type, N, L, Ks, error_true_list)
+        save_kmer_length_results(filename+'-'+model_type, N, L, Ks, error_true)
         
     error_true_list.append(error_true)
     error_true = []
 
 dict_plot = {}
 errors, Ks = load_kmer_length_results(filename, N, L)
-dict_plot[model_type ] = error_true_list
+dict_plot[model_type ] = errors
 # saving and plotting error vs Ks
-save_kmer_length_results(filename+'-'+model_type, N, L, Ks, error_true_list)
 plot_general(dict_plot, title=filename +'-'+model_type+ "-N-" + str(N) + "-L-" + str(L) + "-Kmax-"+str(np.max(Ks)) , save_path="./figures", 
             yaxislabel=r"$\|\theta^{opt} -\theta^{*} \|$", xaxislabel="Kmer Length", xticks = Ks, logplot = False, miny =0)
 plt.close()
