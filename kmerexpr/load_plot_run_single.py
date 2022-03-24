@@ -21,7 +21,7 @@ if __name__ == '__main__':
         model = msm.multinomial_simplex_model
 
     filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 13  #,14, 15
+    K = 15  #,14, 15
     N = 5000000  # Number of reads
     L = 80 
     # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
