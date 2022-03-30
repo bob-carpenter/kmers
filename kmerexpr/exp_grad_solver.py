@@ -42,7 +42,6 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     iteration_counts =[]
     batch = None
     num_steps_between_snapshot = np.maximum(int(n_iters/15),1)
-    # num_steps_before_decrease = np.maximum(int(n_iters/3),1)
     num_steps_before_decrease =0
     for iter in range(n_iters):
         if lrs is None:

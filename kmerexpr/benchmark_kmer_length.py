@@ -5,7 +5,7 @@ import simulate_reads as sr
 import numpy as np
 from plotting import plot_general
 from run_single import run_model, run_model_load_and_save
-from utils import save_run_result, load_theta_true_and_theta_sampled
+from utils import save_run_result, load_simulation_parameters
 from utils import save_kmer_length_results, load_kmer_length_results, load_run_result
 import random
 import matplotlib.pyplot as plt
@@ -32,7 +32,8 @@ force_repeat = True
 load_old = False
 ## Generate data, with ground truth theta
 READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=force_repeat)  # Only do this once
-theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
+dict_simulation = load_simulation_parameters(filename, N, L)
+theta_true = dict_simulation('theta_true')
 # Ks_o, errors_lbfgs_o = load_results(filename, N, L)
 n_repeat = 1
 

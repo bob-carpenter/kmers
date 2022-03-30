@@ -797,12 +797,11 @@ D_A(\eta,\eta_0) \; : = \; A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta
 Plugging in the definition of $L$ and $D_A$ we have that
 
 \begin{align*}
-x^\top \eta +A(\eta)& \leq \; x^\top \eta^0+A(\eta^0)+  \dotprod{ x+\nabla A(\eta^0), \eta -\eta^0  } + A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta - \eta_0}\\
+-x^\top \eta -A(\eta)& \leq \; -x^\top \eta^0-A(\eta^0)-  \dotprod{ x+\nabla A(\eta^0), \eta -\eta^0  } + A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta - \eta_0}\\
 & \implies \\
-x^\top \eta & \leq  x^\top \eta^0 + \dotprod{ x, \eta -\eta^0  } 
+0 & \leq  A(\eta) - A(\eta_0) - \dotprod{\nabla A(\eta_0), \eta - \eta_0},
 \end{align*}
-So it is true but also vacuously so? What is now the point of mapping back to $\theta$ and looking at the resulting bound? It does not seem informative.
-
+which holds if $A$ is convex.
 
 \rob{Recovering $\theta$}
 So we could solve this model, and then recover $\theta$ by solving the linear system

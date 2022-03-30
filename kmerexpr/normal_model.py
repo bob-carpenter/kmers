@@ -1,23 +1,3 @@
-# Sample code automatically generated on 2021-12-11 17:57:52
-# by www.matrixcalculus.org from input:
-#     d/dtheta y' * log(x * exp(theta) / sum(exp(theta))) - 1/18 * theta' * theta
-#       = 1 / sum(exp(theta))
-#         * (x' * (y ./ (1 / sum(exp(theta)) * x * exp(theta))))
-#         .* exp(theta)
-#       - 1 / sum(exp(theta)).^2
-#         * exp(theta)' * x'
-#         * (y ./ (1 / sum(exp(theta)) * x * exp(theta)))
-#         * exp(theta)
-#       - 2/18 * theta
-# where
-#     theta is a vector
-#     x is a matrix
-#     y is a vector
-# The generated code is provided "as is" without warranty of any kind.
-
-# The code here refactors the auto-generated code into a class and
-# pulls the testing out.
-
 import numpy as np
 from scipy.sparse import load_npz
 from scipy.special import softmax as softmax
@@ -25,11 +5,11 @@ from scipy import optimize
 import time
 
 # BMW: Class names are usually done in CamelCase style
-class multinomial_model:
-    """Multinomial model of k-mer reads.
+class normal_model:
+    """Normal model of k-mer reads.
 
     The likelihood and prior are
-        y ~ multinomial(x * softmax(theta))
+        y ~ normal(x * theta)
         theta ~ normal(0, 3)
     where
         * y: M x 1 array of integer counts

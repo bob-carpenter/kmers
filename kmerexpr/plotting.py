@@ -17,6 +17,7 @@ def plot_scatter_theta(title,xaxis,yaxis, horizontal = False):
     plt.title(title, fontsize=25)
     save_path="./figures"
     plt.savefig(os.path.join(save_path, title + ".pdf"), bbox_inches="tight", pad_inches=0.01)
+    print("Saved plot ", os.path.join(save_path, title + ".pdf"))
     plt.close()
 
 def plot_general(result_dict, title, save_path, threshold=False, yaxislabel=r"$ f(x^k)/f(x^0)$", xaxislabel="Effective Passes", 
@@ -75,6 +76,7 @@ def plot_general(result_dict, title, save_path, threshold=False, yaxislabel=r"$ 
     plt.savefig(
         os.path.join(save_path, title + ".pdf"), bbox_inches="tight", pad_inches=0.01
     )
+    print("Saved plot ", os.path.join(save_path, title + ".pdf"))
 
 
 def plot_iter(result_dict, problem, title, save_path, threshold=False, tol=False, yaxislabel=r"$ f(x^k)/f(x^0)$", fontsize=30):

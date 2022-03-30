@@ -6,7 +6,7 @@ from rna_seq_reader import reads_to_y
 import numpy as np
 import os 
 from utils import get_path_names
-from utils import load_theta_true_and_theta_sampled
+from utils import load_simulation_parameters 
 from utils import save_run_result, load_run_result
 from utils import merge_run_model_Dictionaries
 import random
@@ -21,7 +21,9 @@ def run_model_load_and_save(filename, model_class, N, L, K, load_old = False, n_
         print("ERROR: Cannot load old results when simulations are repeated. Please set load_old = False when force_repeat = True")
 
     theta_opt,  f_sol_div_d0, dict_new = run_model(filename, model_class, N, L, K, n_iters = n_iters, dict_old = dict_old, force_repeat = force_repeat) # , batchsize= "full"
-    theta_true, theta_sampled = load_theta_true_and_theta_sampled(filename, N, L)
+    dict_simulation = load_simulation_parameters(filename, N, L)
+    theta_true = dict_simulation('theta_true')
+
     print('Distance theta_opt to theta_true: ', np.linalg.norm(theta_opt - theta_true, ord =1))
     print('Distance theta_av to theta_true: ', np.linalg.norm(dict_new['x_av'] - theta_true, ord =1))
 
