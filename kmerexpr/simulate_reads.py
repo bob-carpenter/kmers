@@ -15,7 +15,7 @@ def length_adjustment_inverse(theta, lengths):
     psi = psi/psi.sum()
     return psi
 
-def simulate_reads(filename, N, L, force_repeat=True, alpha = 1):  #
+def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     """
     filename:  a string that will be the surfix of generated data where
                 "read"+filename will be reads data
@@ -23,6 +23,7 @@ def simulate_reads(filename, N, L, force_repeat=True, alpha = 1):  #
                 "theta"+filename the ground truth theta used to generate the data
     L = length of read
     N = number of reads, must be greater than number of isoforms in ISO_FILE
+    alpha = parameter of Dirchlet distribution that generates psi
     """
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K=1) # dont worry about this K=1. It only affects the Y_FILE, which is not used here
     if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed

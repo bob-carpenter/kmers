@@ -51,7 +51,7 @@ class multinomial_model:
 
     The log posterior could be considered a penalized maximum likelihood with
     a scaled L2 penalty
-        penalty(theta) = 1/18 * ||theta||_2^2
+        penalty(theta) = beta * ||theta||_2^2
     The penalty will shrink estimates of theta toward zero, which has he effect
     of making softmax(theta) more uniform.
 
@@ -67,18 +67,22 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None):
+    def __init__(self, x_file=None, y_file=None, beta =1/18): 
         """Construct a multinomial model.
 
         Keyword arguments:
         x_file -- path to file containing a serialized sparse,
         left-stochastic matrix in .npz format from scipy.sparse
         y -- vector of k-mer counts
-        N -- total number of k-mers
+        beta -- parameter for prior
         """
         self.x = load_npz(x_file)
-        self.y = np.load(y_file)
+        if(isinstance(y_file, np.ndarray)):
+            self.y = y_file
+        else:
+            self.y = np.load(y_file)
         self.N = np.sum(self.y)
+        self.beta = beta
         self.name = "softmax+lbfgs"
 
     def M(self):
@@ -116,17 +120,28 @@ class multinomial_model:
         xTsig = x.dot(sig)
         xTsignnz = xTsig[ymask]
         t_3 = (x[ymask].T).dot(ynnz / xTsignnz)
-        functionValue = ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) / 18)
-        gradient = t_3 * sig - self.N * sig - (2 / 18) * theta
+        functionValue = ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) *self.beta)
+        gradient = t_3 * sig - self.N * sig - (2 *self.beta) * theta
         # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
-    def fit(self, theta=None, factr=10.0, gtol=1e-10, n_iters = 10000):
+
+    def fit(self, theta0=None, factr=1.0, gtol=1e-12, n_iters = 50000):
+
+        if theta0 is None:  #initialize to normal 0 1
+            theta0 = np.random.normal(0, 1, self.T()) 
+
         func = lambda theta: -self.logp_grad(theta)[0]
         fprime = lambda theta: -self.logp_grad(theta)[1]
         start = time.time()
-        theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime, pgtol = gtol, factr = factr, maxiter=n_iters)
+        theta_sol, f_sol, dict_flags_convergence = optimize.fmin_l_bfgs_b(func, theta0, fprime, pgtol = gtol, factr = factr, maxiter=n_iters, maxfun = 10*n_iters)
         end = time.time()
         print("softmax model took ", end - start, " time to fit")
-        dict_sol["grad"] = -dict_sol["grad"]
-        return softmax(theta_sol), -f_sol, dict_sol
+        if dict_flags_convergence['warnflag'] == 1:
+            print("WARNING: softmax model did not converge. too many function evaluations or too many iterations. Print d[task]:", dict_flags_convergence["task"])
+            print("Total iterations: ", str(dict_flags_convergence['nit']))
+        elif dict_flags_convergence['warnflag'] == 2: 
+            print("WARNING: softmax model did not converge due to: ",  dict_flags_convergence["task"])
+        # dict_sol["grad"] = -dict_sol["grad"]
+        dict_opt = {'x' : softmax(theta_sol), 'loss_records' : -f_sol, 'iteration_counts' : dict_flags_convergence['nit'], 'grad' : -dict_flags_convergence["grad"]}  
+        return  dict_opt 

@@ -23,20 +23,6 @@ from scipy.sparse import load_npz
 from scipy import optimize
 from exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
-# from numba import jit
-
-
-def logp_grad_(beta, theta, x, y ):
-    xtheta = x.dot(theta) #softmax(x.dot(theta) +eps)
-    ymask = y.nonzero()
-    ynnz = y[ymask]  # Need only consider coordinates where y is nonzero
-    xthetannz = xtheta[ymask]
-    functionValue = ynnz.dot(np.log(xthetannz)) + (beta - 1)*np.sum(np.log(theta))
-    yxTtheta = ynnz / xthetannz
-    t1 = x[ymask].T.dot(yxTtheta)
-    gradient = t1 + (beta - 1)/theta
-    return functionValue, gradient
-
 
 
 # BMW: Class names are usually done in CamelCase style
@@ -76,11 +62,15 @@ class multinomial_simplex_model:
         Keyword arguments:
         x_file -- path to file containing a serialized sparse,
         left-stochastic matrix in .npz format from scipy.sparse
+        y_file -- path to total counts of each kmer
+        beta -- the parameter of the Dirchlet distribution. Default beta =1 is equivalent to using no prior or a uniform prior
         y -- vector of k-mer counts
-        N -- total number of k-mers
         """
         self.x = load_npz(x_file)
-        self.y = np.load(y_file)
+        if(isinstance(y_file, np.ndarray)):
+            self.y = y_file
+        else:
+            self.y = np.load(y_file)
         self.N = np.sum(self.y)
         self.beta = beta
         self.name = "mirror"
@@ -91,7 +81,18 @@ class multinomial_simplex_model:
     def T(self):
         return self.x.shape[1]
 
-    def logp_grad(self, theta=None, eps = 10**(-10), batch = None):
+    def logp_grad_(self, theta, x, y):
+        xtheta = x.dot(theta) #softmax(x.dot(theta) +eps)
+        ymask = y.nonzero()
+        ynnz = y[ymask]  # Need only consider coordinates where y is nonzero
+        xthetannz = xtheta[ymask]
+        functionValue = ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(theta))
+        yxTtheta = ynnz / xthetannz
+        t1 = x[ymask].T.dot(yxTtheta)
+        gradient = t1 + (self.beta - 1)/theta
+        return functionValue, gradient
+
+    def logp_grad(self, theta = None, eps = 10**(-10), batch = None):
         """Return negative log density and its gradient evaluated at the
         specified simplex.
          loss(theta) = y' log(X'theta) + (beta-1 )
@@ -114,20 +115,22 @@ class multinomial_simplex_model:
         assert y_rows == x_rows
         assert theta_rows == x_cols
         if isinstance(batch,(np.ndarray)):
-            return logp_grad_(self.beta, theta, x[batch], y[batch] )
+            return self.logp_grad_(theta, x[batch], y[batch] )
         else:
-            return logp_grad_(self.beta, theta, x, y )
+            return self.logp_grad_(theta, x, y )
             
 
 
-    def fit(self, theta=None, tol=1e-5, gtol=1e-5, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
+    def fit(self, theta0=None, tol=1e-8, gtol=1e-8, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
+
+        if theta0 is None:  #initialize to uniform
+            alpha = np.ones(self.T())
+            theta0 = alpha/alpha.sum()
 
         if batchsize is not None:
             batchsize = int(self.M()/5)
         # elif batchsize == "full":
         #     batchsize = None
 
-        dict_sol = exp_grad_solver(self.logp_grad, theta, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M(), continue_from = continue_from)
-
-        f_sol = dict_sol['loss_records'][-1]
-        return dict_sol['x'], f_sol, dict_sol  
+        dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M(), continue_from = continue_from)
+        return dict_sol

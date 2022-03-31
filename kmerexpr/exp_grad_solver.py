@@ -40,7 +40,6 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     loss_records = []
     xs = []
     iteration_counts =[]
-    batch = None
     num_steps_between_snapshot = np.maximum(int(n_iters/15),1)
     num_steps_before_decrease =0
     for iter in range(n_iters):
@@ -57,9 +56,12 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
         x_new = prod_exp_normalize(x, lrst*grad)
         # x_new = softmax(np.log(x) +lrst*grad)  # 
         x_av = momentum*x_av +(1-momentum)*x_new
-        if batchsize is not None:
+        if batchsize is None:
+            loss, grad_new  = loss_grad(x_new)
+        else:
             batch = np.random.choice(n, batchsize)
-        loss, grad_new  = loss_grad(x_new, batch = batch)
+            loss, grad_new  = loss_grad(x_new, batch = batch)
+        
         # Checking if method is stopping
         if np.linalg.norm(x_new - x, ord =1) <= tol:
             print("Exp_grad iterates are less than: " + str(tol), " apart. Stopping")

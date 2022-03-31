@@ -57,7 +57,7 @@ def test_optimizer():
     os.remove(X_FILE)
     theta0 = np.random.dirichlet(0.7 * np.ones(model.T()))
     # Get high precision solution
-    theta_sol, f_sol, dict_sol = model.fit(theta0)
+    dict_sol = model.fit(theta0)
     # Compare against something scipy optimizer?
     # cons = (
     #     {"type": "ineq", "fun": lambda x: x[0] - 2 * x[1] + 2},

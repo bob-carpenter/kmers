@@ -97,9 +97,18 @@ processes. It's also possible to test a single function, e.g.,
 > pytest -s kmerexpr/test_multinomial_model.py
 ```
 
+or alternatively
+
+```console
+> cd kmers/kmerexpr
+> python3 -m pytest ../test/
+```
+
 This tests the fasta reader along with the serializer and deserializer
 for the matrix converting a simplex over isoforms to a simplex over
 k-mers.
+
+
 
 ## Experiment
 

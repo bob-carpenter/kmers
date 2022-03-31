@@ -1,50 +1,46 @@
 import multinomial_model as mm
 import multinomial_simplex_model as msm
+import normal_model as mnm
 import transcriptome_reader as tr
 import simulate_reads as sr
 from rna_seq_reader import reads_to_y
 import numpy as np
 import os 
 from utils import get_path_names
-from utils import load_simulation_parameters 
-from utils import save_run_result, load_run_result
-from utils import merge_run_model_Dictionaries
+from utils import save_run_result
 import random
 import time
 
+from simulate_reads import length_adjustment_inverse
+from plotting import plot_scatter, plot_error_vs_iterations
+from utils import load_simulation_parameters
+from utils import load_run_result
 
-def run_model_load_and_save(filename, model_class, N, L, K, load_old = False, n_iters = 5000, force_repeat = True):
-    dict_old = None
-    if load_old and force_repeat is False:
-        dict_old = load_run_result(filename, N, L,  K)
-    elif load_old and force_repeat is True:
-        print("ERROR: Cannot load old results when simulations are repeated. Please set load_old = False when force_repeat = True")
-
-    theta_opt,  f_sol_div_d0, dict_new = run_model(filename, model_class, N, L, K, n_iters = n_iters, dict_old = dict_old, force_repeat = force_repeat) # , batchsize= "full"
+def plot_errors_and_scatter(filename, model_type, N, L, K):
+    dict_results = load_run_result(filename, model_type, N, L,  K)
     dict_simulation = load_simulation_parameters(filename, N, L)
-    theta_true = dict_simulation('theta_true')
+    
+    psi_true = dict_simulation['psi']
+    # Plotting error vs iterations for simplex method
+    if model_type == "simplex":
+        theta_true = dict_simulation['theta_true']
+        title=filename + '-theta-errors-''-'+model_type+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K)
+        plot_error_vs_iterations(dict_results, theta_true, title, model_type)
 
-    print('Distance theta_opt to theta_true: ', np.linalg.norm(theta_opt - theta_true, ord =1))
-    print('Distance theta_av to theta_true: ', np.linalg.norm(dict_new['x_av'] - theta_true, ord =1))
+    # Plotting scatter of theta_{opt} vs theta_{*} for a fixed k    
+    theta_opt = dict_results['x']
+    psi_opt = length_adjustment_inverse(theta_opt, dict_simulation['lengths'])
+    title = filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
+    plot_scatter(title,psi_opt,psi_true, horizontal=False)
+    plot_scatter(title,psi_opt,psi_opt- psi_true, horizontal=True)
+    MSE = np.linalg.norm(psi_true - psi_opt)/psi_true.shape
+    print("MSE distance to solution = ", str(MSE))
+    print("L1 distance to solution = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
 
-    if load_old and force_repeat is False:
-        dict_new = merge_run_model_Dictionaries(dict_old, dict_new)  # merge previous dictionary with new dictionary
-    save_run_result(filename, N, L,  K, dict_new) # saving latest solution
-    return theta_opt
 
-
-
-def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, dict_old =None, force_repeat = True):
+def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None,  force_repeat = True):
    # Need to check if y and X already exit. And if so, just load them.
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
-    
-    if dict_old == None or force_repeat:
-        theta0 = None
-        continue_from = 0
-    else:
-        theta0 = dict_old['x']
-        continue_from = dict_old["iteration_counts"][-1]
-
     tic = time.perf_counter()
     if os.path.exists(Y_FILE) is False or force_repeat is True:
         print("Generating ", Y_FILE)
@@ -56,47 +52,56 @@ def run_model(filename, model_class, N, L, K,  n_iters = 5000, batchsize= None, 
     ## Fit model
     model = model_class(X_FILE, Y_FILE)
     print(f"Generated/loaded y and X  in {toc - tic:0.4f} seconds")
-    if theta0 is None:
-        if model.name == "mirror": # We should be using alpha parameter less than one, push towards boundaries
-            alpha = np.ones(model.T())
-            theta0 = alpha/alpha.sum()
-        else:
-            theta0 = np.random.normal(0, 1, model.T()) 
-
     tic = time.perf_counter()
-    theta, f_sol, dict_new= model.fit(theta0, n_iters =n_iters, batchsize = None, continue_from = continue_from)
+    if model_class == "simplex": # 
+        alpha = np.ones(model.T())
+        theta0 = alpha/alpha.sum()
+        dict_opt= model.fit(theta0=None, n_iters =n_iters, batchsize = None)
+    else:
+        dict_opt = model.fit(theta0=None, n_iters =n_iters)
+    
+    
     toc = time.perf_counter()
     print(f"Fitting model took {toc - tic:0.4f} seconds")
 
     # os.remove(X_FILE)  # delete file
-    return theta,  f_sol, dict_new
+    return dict_opt
 
 
 if __name__ == '__main__': 
     random.seed(42) 
-    model_type = "simplex" 
-    # model_type = "softmax"
+    # model_type = "simplex" 
+    model_type = "softmax"
+    # model_type = "normal"
 
     if(model_type == "softmax"):
         model_class = mm.multinomial_model
+    elif(model_type == "normal"):
+        model_class = mnm.normal_model
     else:
         model_class = msm.multinomial_simplex_model
 
 
     filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 2
-    N = 1000
+    K = 6
+    N = 2000
     L = 14
-
     # filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    # K = 1
+    # # K = 8
+    # # N = 5000000
+    # # L = 100  # waiting for this one 2nd tab with softmax, 
+    # K = 10
     # N = 5000000
-    # L = 70
+    # L = 70  # waiting for this one 3rd tab with softmax?
     force_repeat = False
     tic = time.perf_counter()
     READS_FILE = sr.simulate_reads(filename, N, L, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
-    run_model_load_and_save(filename, model_class, N, L, K, load_old = True, n_iters = 100, force_repeat = force_repeat)
+    dict_opt = run_model(filename, model_class, N, L, K, n_iters = 200, force_repeat = force_repeat) # , batchsize= "full"
+    save_run_result(filename, model_type, N, L,  K, dict_opt) # saving latest solution
+
+    plot_errors_and_scatter(filename, model_type, N, L, K)
+
 

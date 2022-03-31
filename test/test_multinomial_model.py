@@ -56,13 +56,13 @@ def test_optimizer():
     os.remove(X_FILE)
     theta0 = np.random.normal(0, 1, model.T())
     # Get high precision solution
-    theta_sol, f_sol, dict_sol = model.fit(theta0, factr=1.0, pgtol=1e-16)
+    dict_sol = model.fit(theta0, factr=1.0, gtol=1e-16)
     # Compare against CG
     func = lambda theta: -model.logp_grad(theta)[0]
     fprime = lambda theta: -model.logp_grad(theta)[1]
     CGResult = optimize.minimize(
         func, theta0, method="CG", jac=fprime, options={"gtol": 1e-16}
     )
-    assert np.linalg.norm(softmax(CGResult.x) - theta_sol)/np.linalg.norm(theta_sol) < 1e-04
+    assert np.linalg.norm(softmax(CGResult.x) - dict_sol["x"])/np.linalg.norm(dict_sol["x"]) < 1e-04
     assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-03
     assert np.linalg.norm(dict_sol["grad"]) < 1e-03

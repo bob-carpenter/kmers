@@ -3,17 +3,18 @@ import os
 import numpy as np
 
 
-def plot_scatter_theta(title,xaxis,yaxis, horizontal = False):
+def plot_scatter(title,xaxis,yaxis, horizontal = False):
     plt.scatter(xaxis,yaxis , s=10, alpha=0.5 )  #theta_opt
     if horizontal:
-        title = title + "-theta-minus-scatter"
+        title = title + "-psi-minus-scatter"
         plt.plot([0,np.max(xaxis)], [0,0], '--')
+        plt.ylabel(r"$ \psi^{opt} - \psi^{*}$", fontsize=25)
     else :
-        title = title + "-theta-scatter"
+        title = title + "-psi-scatter"
         plt.plot([0,np.max(xaxis)], [0,np.max(yaxis)], '--')
+        plt.ylabel(r"$ \psi^{*}$", fontsize=25)
 
-    plt.xlabel(r"$ \theta^{opt}$", fontsize=25)
-    plt.ylabel(r"$ \theta^{opt} - \theta^{*}$", fontsize=25)
+    plt.xlabel(r"$ \psi^{opt}$", fontsize=25)
     plt.title(title, fontsize=25)
     save_path="./figures"
     plt.savefig(os.path.join(save_path, title + ".pdf"), bbox_inches="tight", pad_inches=0.01)
