@@ -54,6 +54,9 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
             lrst = lrs[iter]
         # alternative update using prod exp function
         x_new = prod_exp_normalize(x, lrst*grad)
+        if np.isnan(x_new.sum()):
+            print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )
+            break
         # x_new = softmax(np.log(x) +lrst*grad)  # 
         x_av = momentum*x_av +(1-momentum)*x_new
         if batchsize is None:

@@ -47,9 +47,8 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
-    # beta = np.random.uniform(0, 1)
     alphas = alpha*np.ones(T)
-    psi= np.random.dirichlet(alphas)
+    psi= np.random.dirichlet(alphas) # uniformly generated. Should use a sparser ground truth?
     lengths = np.asarray(lengths_list)
     theta_true= length_adjustment(psi, lengths)
     print("theta[0:10] =", theta_true[0:10])
@@ -59,7 +58,7 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     bins = np.bincount(y_sampled)
     # look for bincount function
     theta_sampled = bins/N
-    save_simulation_parameters(filename, N, L, lengths, psi, theta_true, theta_sampled)
+    save_simulation_parameters(filename, N, L, alpha, lengths, psi, theta_true, theta_sampled)
     with open(READS_FILE, "w") as out:
         for n in range(N): #range(T): Rob: Used to be number of isoforms, but that's incorrect? We are writing the reads file, which has N rows
             if (n + 1) % 100000 == 0:

@@ -127,10 +127,10 @@ class multinomial_simplex_model:
             alpha = np.ones(self.T())
             theta0 = alpha/alpha.sum()
 
-        if batchsize is not None:
+        if batchsize is None:
             batchsize = int(self.M()/5)
-        # elif batchsize == "full":
-        #     batchsize = None
+        elif batchsize == "full":
+            batchsize = None
 
         dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M(), continue_from = continue_from)
         return dict_sol
