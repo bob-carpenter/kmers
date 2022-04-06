@@ -1,3 +1,4 @@
+
 import multinomial_model as mm
 import multinomial_simplex_model as msm
 import normal_model as mnm
@@ -15,6 +16,7 @@ from simulate_reads import length_adjustment_inverse
 from plotting import plot_scatter, plot_error_vs_iterations
 from utils import load_simulation_parameters
 from utils import load_run_result
+from utils import load_lengths
 
 def plot_errors_and_scatter(filename, model_type, N, L, K, alpha):
     dict_results = load_run_result(filename, model_type, N, L,  K)
@@ -28,17 +30,17 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha):
         plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)
 
     # Plotting scatter of psi_{opt} vs psi_{*}
+    lengths = load_lengths(filename, N, L)
     theta_opt = dict_results['x']
-    psi_opt = length_adjustment_inverse(theta_opt, dict_simulation['lengths'])
+    psi_opt = length_adjustment_inverse(theta_opt, lengths)
     
-
     plot_scatter(title, psi_opt, psi_true, horizontal=False)
     plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)
     MSE = np.linalg.norm(psi_true - psi_opt)/psi_true.shape
     print("MSE distance to solution = ", str(MSE))
-    print("L1 distance to psi solution = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
-    print("L1 distance to theta solution = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
-
+    print("L1 distance to psi_true = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
+    print("L1 distance to theta_true = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
+    print("L1 distance to theta_sampled = ", str(np.linalg.norm(dict_simulation['theta_sampled'] - theta_opt, ord =1)))
 
 def run_model(filename, model_type, N, L, K,  n_iters = 5000, batchsize= None,  force_repeat = True):
    # Need to check if y and X already exit. And if so, just load them.
@@ -63,13 +65,15 @@ def run_model(filename, model_type, N, L, K,  n_iters = 5000, batchsize= None,  
     tic = time.perf_counter()
     print("Fittting model: ", model_type)
 
-    if model_class == "simplex": # 
+    if model_class == "simplex": # Initializing iterates using the length adjustment transform
+        lengths = load_lengths(filename, N, L)
+        model.initialize_iterates(lengths)
         dict_opt= model.fit(theta0=None, n_iters=n_iters, batchsize=batchsize)
     else:
         dict_opt = model.fit(theta0=None, n_iters=n_iters)
     
-    
     toc = time.perf_counter()
+    dict_opt['fit-time'] = toc - tic
     print(f"Fitting model took {toc - tic:0.4f} seconds")
 
     # os.remove(X_FILE)  # delete file
@@ -78,20 +82,23 @@ def run_model(filename, model_type, N, L, K,  n_iters = 5000, batchsize= None,  
 
 if __name__ == '__main__': 
     random.seed(42) 
-    # model_type = "simplex" 
+    model_type = "simplex" 
     # model_type = "softmax"
-    model_type = "normal"
+    # model_type = "normal"
 
-    filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
-    K = 6
-    N = 2000
-    L = 14
-    # filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    # K = 14
-    # N = 5000000
-    # L = 100  # waiting for this one 3rd tab with softmax?
-    alpha = 0.001  # Parameter of Dirchlet that generates ground truth psi  
-    force_repeat = True
+    # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
+    # K = 6
+    # N = 2000
+    # L = 14
+    filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+    # # p=0.1
+    # # filename ="sampled_genome_"+str(p)
+    K = 15
+    N = 5000000
+    L = 100  # waiting for this one 3rd tab with softmax?
+    alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
+    force_repeat = False
+    print("experiment (N, L, K) = (", str(N),", ",str(L), ", ", str(K), ")" )
     tic = time.perf_counter()
     READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
@@ -99,7 +106,7 @@ if __name__ == '__main__':
 
 
     # if dict_opt is None or force_repeat == True:
-    dict_opt = run_model(filename, model_type, N, L, K, n_iters = 20, force_repeat = force_repeat, batchsize= "full") # , batchsize= "full"
+    dict_opt = run_model(filename, model_type, N, L, K, n_iters = 6000, force_repeat = force_repeat, batchsize= "full") # , batchsize= "full"
     save_run_result(filename, model_type, N, L,  K, dict_opt) # saving latest solution
 
     # dict_opt = load_run_result(filename, model_type, N, L,  K)

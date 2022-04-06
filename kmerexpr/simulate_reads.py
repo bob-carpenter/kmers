@@ -1,7 +1,7 @@
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
 from utils import get_path_names
-from utils import save_simulation_parameters
+from utils import save_simulation_parameters, save_lengths
 from os import path
 
 
@@ -55,10 +55,11 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     print("theta[K-10:K] =", theta_true[T - 10 : T])
     y_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
-    bins = np.bincount(y_sampled)
+    bins = np.bincount(y_sampled, minlength=T)
     # look for bincount function
     theta_sampled = bins/N
-    save_simulation_parameters(filename, N, L, alpha, lengths, psi, theta_true, theta_sampled)
+    save_simulation_parameters(filename, N, L, alpha, psi, theta_true, theta_sampled)
+    save_lengths(filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
         for n in range(N): #range(T): Rob: Used to be number of isoforms, but that's incorrect? We are writing the reads file, which has N rows
             if (n + 1) % 100000 == 0:

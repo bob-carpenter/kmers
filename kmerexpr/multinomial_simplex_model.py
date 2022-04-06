@@ -118,14 +118,16 @@ class multinomial_simplex_model:
             return self.logp_grad_(theta, x[batch], y[batch] )
         else:
             return self.logp_grad_(theta, x, y )
-            
 
+    def initialize_iterates(self, lengths=None):
+        alpha = np.ones(self.T())
+        theta0 = alpha/alpha.sum()
+        return theta0
 
     def fit(self, theta0=None, tol=1e-8, gtol=1e-8, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
 
         if theta0 is None:  #initialize to uniform
-            alpha = np.ones(self.T())
-            theta0 = alpha/alpha.sum()
+            theta0 = self.initialize_iterates()
 
         if batchsize is None:
             batchsize = int(self.M()/5)
