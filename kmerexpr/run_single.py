@@ -82,8 +82,8 @@ def run_model(filename, model_type, N, L, K,  n_iters = 5000, batchsize= None,  
 
 if __name__ == '__main__': 
     random.seed(42) 
-    model_type = "simplex" 
-    # model_type = "softmax"
+    # model_type = "simplex" 
+    model_type = "softmax"
     # model_type = "normal"
 
     # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
     # # p=0.1
     # # filename ="sampled_genome_"+str(p)
-    K = 15
+    K = 12
     N = 5000000
     L = 100  # waiting for this one 3rd tab with softmax?
     alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
 
     # if dict_opt is None or force_repeat == True:
-    dict_opt = run_model(filename, model_type, N, L, K, n_iters = 6000, force_repeat = force_repeat, batchsize= "full") # , batchsize= "full"
+    dict_opt = run_model(filename, model_type, N, L, K, n_iters = 2000, force_repeat = force_repeat, batchsize= "full") # , batchsize= "full"
     save_run_result(filename, model_type, N, L,  K, dict_opt) # saving latest solution
 
     # dict_opt = load_run_result(filename, model_type, N, L,  K)

@@ -20,9 +20,9 @@ def test1():
     y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
-    assert model.T() == 3
-    assert model.M() == 16
-    theta_test = np.random.normal(0, 1, model.T())
+    assert model.T == 3
+    assert model.M == 16
+    theta_test = np.random.normal(0, 1, model.T)
     check_gradient(model, theta_test)
 
 @pytest.mark.slow
@@ -38,8 +38,8 @@ def test_human_transcriptome():
     print("reading in model")
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
-    assert model.T() == T
-    assert model.M() == M
+    assert model.T == T
+    assert model.M == M
     theta_test = np.random.normal(0, 1, T)
     print("checking gradient")
     check_gradient(model, theta_test)
@@ -54,7 +54,7 @@ def test_optimizer():
     y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
-    theta0 = np.random.normal(0, 1, model.T())
+    theta0 = np.random.normal(0, 1, model.T)
     # Get high precision solution
     dict_sol = model.fit(theta0, factr=1.0, gtol=1e-16)
     # Compare against CG

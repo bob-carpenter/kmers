@@ -19,9 +19,9 @@ def test1():
     y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_simplex_model(X_FILE, y_test)
     os.remove(X_FILE)
-    assert model.T() == 3
-    assert model.M() == 16
-    alpha = 0.5 * np.ones(model.T())
+    assert model.T == 3
+    assert model.M == 16
+    alpha = 0.5 * np.ones(model.T)
     theta_test = np.random.dirichlet(alpha)
     check_gradient(model, theta_test)
 
@@ -38,9 +38,9 @@ def test_human_transcriptome():
     print("reading in model")
     model = mm.multinomial_simplex_model(X_FILE, y_test)
     os.remove(X_FILE)
-    assert model.T() == T
-    assert model.M() == M
-    alpha = 0.1 * np.ones(model.T())
+    assert model.T == T
+    assert model.M == M
+    alpha = 0.1 * np.ones(model.T)
     theta_test = np.random.dirichlet(alpha)
     print("checking gradient")
     check_gradient(model, theta_test)
@@ -54,18 +54,13 @@ def test_optimizer():
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_simplex_model(X_FILE, y_test)
-    os.remove(X_FILE)
-    theta0 = np.random.dirichlet(0.7 * np.ones(model.T()))
+    theta0 = np.random.dirichlet( np.ones(model.T))
     # Get high precision solution
-    dict_sol = model.fit(theta0)
-    # Compare against something scipy optimizer?
-    # cons = (
-    #     {"type": "ineq", "fun": lambda x: x[0] - 2 * x[1] + 2},
-    #     {"type": "ineq", "fun": lambda x: -x[0] - 2 * x[1] + 6},
-    #     {"type": "ineq", "fun": lambda x: -x[0] + 2 * x[1] + 2},
-    # )
-    # bnds = (0, 1)
-    # theta_sol, f_sol, dict_sol = optimize.fmin_l_bfgs_b(func, theta, fprime)
-    # assert np.linalg.norm(CGResult.x - theta_sol) < 1e-04
-    # assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-04
-    # assert np.linalg.norm(dict_sol["grad"]) < 1e-04
+    dict_sol = model.fit(theta0, n_iters=2000)
+    # Compare against softmax+lbfgs solution
+    import kmerexpr.multinomial_model as mm_softmax 
+    model_softmax = mm_softmax.multinomial_model(X_FILE, y_test)
+    theta0_softmax = np.random.normal(0, 1, model.T)
+    dict_sol_softmax = model_softmax.fit(theta0_softmax, factr=0.01, gtol=1e-17, n_iters=4000)
+    assert model_softmax.logp_grad(dict_sol['x'])[0]+1e-06 > model_softmax.logp_grad(dict_sol_softmax['x'])[0]
+    os.remove(X_FILE)

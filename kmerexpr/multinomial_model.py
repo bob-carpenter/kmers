@@ -76,22 +76,30 @@ class multinomial_model:
         y -- vector of k-mer counts
         beta -- parameter for prior
         """
-        self.x = load_npz(x_file)
+        x = load_npz(x_file)
         if(isinstance(y_file, np.ndarray)):
-            self.y = y_file
+            y = y_file
         else:
-            self.y = np.load(y_file)
-        self.N = np.sum(self.y)
-        self.beta = beta
-        self.name = "softmax+lbfgs"
+            y = np.load(y_file)
+        self.ymask = y.nonzero() # Need only need self.ynnz and self.xnnz. Throw away the rest?
+        self.ynnz = y[self.ymask]
+        self.xnnz = x[self.ymask]
+        self.N = np.sum(y)
+        self.name = "softmax"
+        x_dim = x.shape
+        self.M = x_dim[0]
+        self.T = x_dim[1] 
+        self.beta =beta
+        # dimension checking
+        assert len(x_dim) == 2
+        x_rows = x_dim[0]
+        x_cols = x_dim[1]
+        dim = y.shape
+        assert len(dim) == 1
+        y_rows = dim[0]
+        assert y_rows == x_rows
 
-    def M(self):
-        return self.x.shape[0]
-
-    def T(self):
-        return self.x.shape[1]
-
-    def logp_grad(self, theta=None):
+    def logp_grad_old(self, theta=None):
         """Return log density and its gradient evaluated at the
         specified simplex.
 
@@ -125,11 +133,28 @@ class multinomial_model:
         # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
+    def logp_grad(self, theta=None):
+        """Return log density and its gradient evaluated at the
+        specified simplex.
+
+        Keyword arguments:
+        theta -- simplex of expected isoform proportions
+        """
+        sig = softmax(theta)
+        # xTsig = x.dot(sig)
+        # xTsignnz = xTsig[ymask]
+        xTsignnz= self.xnnz.dot(sig) 
+        t_3 = (self.xnnz.T).dot(self.ynnz / xTsignnz)
+        functionValue = self.ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) *self.beta)
+        gradient = t_3 * sig - self.N * sig - (2 *self.beta) * theta
+        # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
+        return functionValue, gradient
+
 
     def fit(self, theta0=None, factr=1.0, gtol=1e-12, n_iters = 50000):
 
         if theta0 is None:  #initialize to normal 0 1
-            theta0 = np.random.normal(0, 1, self.T()) 
+            theta0 = np.random.normal(0, 1, self.T) 
 
         func = lambda theta: -self.logp_grad(theta)[0]
         fprime = lambda theta: -self.logp_grad(theta)[1]

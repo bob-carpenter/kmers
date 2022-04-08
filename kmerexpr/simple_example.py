@@ -29,27 +29,34 @@ else:
 
 
 filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-K = 10
+K = 15
 N = 5000000
-L = 70
+L = 100
 # filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
 # K = 5
 # N = 1000
 # L = 14
-force_repeat=False
+force_repeat = False
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
 # Create y and X and save to file 
 
-# reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
-# tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
+reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
+tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
 model = model_class(X_FILE, Y_FILE) # initialize model. beta =1 is equivalent to no prior/regularization
-
+theta = model.initialize_iterates()
+functionValue, gradient = model.logp_grad(theta)
+functionValue2, gradient2 = model.logp_grad2(theta)
+import cProfile
+cProfile.run('model.logp_grad(theta)')
+cProfile.run('model.logp_grad2(theta)')
 tic = time.perf_counter()
+cProfile.run('model.fit(n_iters =100)')
+cProfile.run('model.fit(n_iters =100, batch = "full")')
 dict_results= model.fit(n_iters =2000)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
