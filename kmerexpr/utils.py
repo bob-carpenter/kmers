@@ -16,11 +16,15 @@ def get_path_prefix_surfix(name, N, L):
     surfix = name_no_surfix + "-" + str(N) + "-" + str(L) 
     return ISO_FILE, prefix, surfix
 
-def get_path_names(filename, N, L, K):
+def get_path_names(filename, N, L, K, alpha=None):
     ISO_FILE, prefix, surfix = get_path_prefix_surfix(filename, N, L)
     READS_FILE = prefix + "READS-" + surfix + ".fna"
     X_FILE = prefix + "X-" + surfix + "-" + str(K) + "_csr.npz"
-    Y_FILE = prefix + "Y-" + surfix + "-" + str(K) + ".npy"
+    Y_FILE = prefix + "Y-" + surfix + "-" + str(K)
+    if alpha is None:
+        Y_FILE = Y_FILE + ".npy"
+    else:
+        Y_FILE = Y_FILE +"-a-" +str(alpha) + ".npy"
     return ISO_FILE, READS_FILE, X_FILE, Y_FILE
 
 def save_lengths(filename, N, L, lengths):
@@ -54,16 +58,20 @@ def load_simulation_parameters(filename, N, L, alpha):
     a_file.close()
     return dict
 
-def save_run_result(filename, model_name, N, L,  K, dict):
+def save_run_result(filename, model_name, N, L,  K, dict, alpha=None):
     ISO_FILE, prefix, surfix = get_path_prefix_surfix(filename, N, L)
     DICT_FILE = prefix + "DICT-RESULTS-" + model_name + "-" + surfix + str(K)
+    if alpha is not None:
+        DICT_FILE = DICT_FILE + "-a-" +str(alpha)
     a_file = open(DICT_FILE, "wb")
     pickle.dump(dict, a_file)
     a_file.close()
 
-def load_run_result(filename, model_name, N, L,  K):
+def load_run_result(filename, model_name, N, L,  K, alpha=None):
     ISO_FILE, prefix, surfix = get_path_prefix_surfix(filename, N, L)
     DICT_FILE = prefix + "DICT-RESULTS-" + model_name + "-" + surfix + str(K)
+    if alpha is not None:
+        DICT_FILE = DICT_FILE + "-a-" +str(alpha)
     try:
         a_file = open(DICT_FILE, "rb")
         dict = pickle.load(a_file)
@@ -71,12 +79,3 @@ def load_run_result(filename, model_name, N, L,  K):
     except:
         dict= None
     return dict
-
-def log_loss(y, y_hat):
-        # Numerically stable version, seperating the negative and positive to avoid overflow.
-        t = y * y_hat
-        idx = t > 0
-        out = np.zeros(idx.shape)
-        out[idx] = np.log(1 + np.exp(-t[idx])) # (1.0 + exp(-t))
-        out[~idx] = -t[~idx] + np.log(1+ np.exp(t[~idx]))   # (1.0 + exp(t))/exp(t)
-        return out 

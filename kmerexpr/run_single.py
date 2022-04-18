@@ -18,9 +18,8 @@ from utils import load_simulation_parameters
 from utils import load_run_result
 from utils import load_lengths
 
-def plot_errors_and_scatter(filename, model_type, N, L, K, alpha):
-    dict_results = load_run_result(filename, model_type, N, L,  K)
-    dict_simulation = load_simulation_parameters(filename, N, L, alpha)
+def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulation, lengths):
+    dict_results = load_run_result(filename, model_type, N, L,  K, alpha =alpha)
     theta_true = dict_simulation['theta_true']
     psi_true = dict_simulation['psi']
     # Plotting error vs iterations for simplex method
@@ -30,21 +29,26 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha):
         plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)
 
     # Plotting scatter of psi_{opt} vs psi_{*}
-    lengths = load_lengths(filename, N, L)
     theta_opt = dict_results['x']
     psi_opt = length_adjustment_inverse(theta_opt, lengths)
     
-    plot_scatter(title, psi_opt, psi_true, horizontal=False)
-    plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)
-    MSE = np.linalg.norm(psi_true - psi_opt)/psi_true.shape
-    print("MSE distance to solution = ", str(MSE))
+    # plot_scatter(title, theta_opt, dict_simulation['theta_sampled'], horizontal=False)
+    # plot_scatter(title, theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
+
+    plot_scatter(title, theta_opt, dict_simulation['theta_sampled'], horizontal=False)
+    plot_scatter(title, theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
+    
+    # plot_scatter(title, psi_opt, psi_true, horizontal=False)
+    # plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)    
+    RMSE = np.sqrt(np.linalg.norm(psi_true - psi_opt)/psi_true.shape)
+    print("MSE distance to solution = ", str(RMSE))
     print("L1 distance to psi_true = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
     print("L1 distance to theta_true = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
     print("L1 distance to theta_sampled = ", str(np.linalg.norm(dict_simulation['theta_sampled'] - theta_opt, ord =1)))
 
-def run_model(filename, model_type, N, L, K,  n_iters = 5000, batchsize= None,  force_repeat = True):
+def run_model(filename, model_type, N, L, K, alpha=None, n_iters = 5000, batchsize= None,  force_repeat = True):
    # Need to check if y and X already exit. And if so, just load them.
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha = alpha)
     tic = time.perf_counter()
     if os.path.exists(Y_FILE) is False or force_repeat is True:
         print("Generating ", Y_FILE)
@@ -87,29 +91,31 @@ if __name__ == '__main__':
     # model_type = "normal"
 
     # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
-    # K = 6
+    # K = 10
     # N = 2000
     # L = 14
     filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    # # p=0.1
-    # # filename ="sampled_genome_"+str(p)
+    # p=0.1
+    # filename ="sampled_genome_"+str(p)
     K = 15
-    N = 5000000
-    L = 100  # waiting for this one 3rd tab with softmax?
+    N = 20000000
+    L = 100 
     alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
-    force_repeat = False
+    force_repeat = True
     print("experiment (N, L, K) = (", str(N),", ",str(L), ", ", str(K), ")" )
     tic = time.perf_counter()
     READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
+    dict_simulation = load_simulation_parameters(filename, N, L, alpha)
+    lengths = load_lengths(filename, N, L)
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
 
     # if dict_opt is None or force_repeat == True:
-    dict_opt = run_model(filename, model_type, N, L, K, n_iters = 8000, force_repeat = force_repeat) 
-    save_run_result(filename, model_type, N, L,  K, dict_opt) # saving latest solution
+    dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 40000, force_repeat = force_repeat) 
+    save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
 
     # dict_opt = load_run_result(filename, model_type, N, L,  K)
-    plot_errors_and_scatter(filename, model_type, N, L, K, alpha = alpha)
+    plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulation, lengths)
 
 

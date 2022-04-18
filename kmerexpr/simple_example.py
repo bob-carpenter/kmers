@@ -12,8 +12,6 @@ from utils import load_simulation_parameters, load_run_result
 from plotting import plot_error_vs_iterations, plot_scatter
 import random
 import time
-
-
 random.seed(42) 
 
 model_type = "simplex" 
@@ -28,18 +26,21 @@ else:
     model_class = msm.multinomial_simplex_model
 
 
-filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-K = 15
-N = 5000000
-L = 100
-# filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
-# K = 5
-# N = 1000
-# L = 14
+# filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+# K = 15
+# N = 5000000
+# L = 100
+filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
+K = 11
+N = 1000
+L = 14
+
+alpha = 0.01
 force_repeat = False
-ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
+ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 tic = time.perf_counter()
-READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
+READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
+dict_simulation = load_simulation_parameters(filename, N, L)
 # Create y and X and save to file 
 
 reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
@@ -49,20 +50,12 @@ print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seco
 
 model = model_class(X_FILE, Y_FILE) # initialize model. beta =1 is equivalent to no prior/regularization
 theta = model.initialize_iterates()
-functionValue, gradient = model.logp_grad(theta)
-functionValue2, gradient2 = model.logp_grad2(theta)
-import cProfile
-cProfile.run('model.logp_grad(theta)')
-cProfile.run('model.logp_grad2(theta)')
 tic = time.perf_counter()
-cProfile.run('model.fit(n_iters =100)')
-cProfile.run('model.fit(n_iters =100, batch = "full")')
 dict_results= model.fit(n_iters =2000)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
 ## Plotting
-dict_simulation = load_simulation_parameters(filename, N, L)
 theta_true  = dict_simulation['theta_true']
 theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']

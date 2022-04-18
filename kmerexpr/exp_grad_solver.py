@@ -15,10 +15,9 @@ def prod_exp_normalize(x,y):
 
 def update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,iteration_counts):
     relative_grad_norm = np.sqrt(grad @ grad)/normg0
-    relative_loss = loss/loss0
     xs.append(x)
     norm_records.append(relative_grad_norm)
-    loss_records.append(relative_loss)
+    loss_records.append(loss)
     iteration_counts.append(iter)
 
 def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  batchsize = None, n = None, continue_from = 0):
@@ -47,9 +46,9 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     for iter in range(n_iters):
         if lrs is None:
             if iter < num_steps_before_decrease:
-                lrst = 2**(1/2)/(norm(grad, np.inf) )
+                lrst = 2**(-1/2)/(norm(grad, np.inf) )
             else:
-                lrst = 2**(1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
+                lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
         elif lrs.shape == (1,):
             lrst = lrs[0]
         else:
@@ -80,7 +79,7 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
             update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,iteration_counts)
             # Print progress
             if verbose:
-                print("iter {:n} | norm of gradient {:f} | loss {:f} |".format(iteration_counts[-1],norm_records[-1],loss_records[-1]))
+                print("iter {:n} | rel. norm of grad {:f} | loss {:f} |".format(iteration_counts[-1],norm_records[-1],loss_records[-1]))
 
     update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,iteration_counts)
     dict_out =  {'x' : x, 'norm_records' : norm_records, 'loss_records' : loss_records, 'iteration_counts' : iteration_counts, 'xs' : xs, 'x_av' : x_av}                                                                         
