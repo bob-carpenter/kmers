@@ -20,6 +20,7 @@
 
 import numpy as np
 from scipy.sparse import load_npz
+from scipy.sparse.linalg import lsqr
 from scipy import optimize
 from exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
@@ -109,7 +110,7 @@ class multinomial_simplex_model:
         gradient = t1 + (self.beta - 1)/theta
         return functionValue, gradient
 
-    def initialize_iterates(self, lengths=None):
+    def initialize_iterates_uniform(self, lengths=None):
         #should use beta and dichlet to initialize? Instead of always uniform?
         alpha = np.ones(self.T)
         theta0 = alpha/alpha.sum()
@@ -117,10 +118,22 @@ class multinomial_simplex_model:
             theta0 = length_adjustment(theta0,lengths)
         return theta0
 
+    def initialize_iterates_Xy(self, lengths=None):
+            #should use beta and dichlet to initialize? Instead of always uniform?
+        theta0 = self.ynnz @ self.xnnz
+        theta0 = theta0/theta0.sum()
+        return theta0      
+
+    def initialize_iterates_lsq(self, lengths=None):
+            #should use beta and dichlet to initialize? Instead of always uniform?
+        theta0, istop, itn, r1norm = lsqr(self.xnnz, self.ynnz/self.N,  iter_lim=200)[:4]
+        theta0 = theta0/theta0.sum()
+        return theta0       
+
     def fit(self, theta0=None, tol=1e-8, gtol=1e-8, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
 
         if theta0 is None:  #initialize to uniform
-            theta0 = self.initialize_iterates()
+            theta0 = self.initialize_iterates_Xy()
         # if batchsize is None:
         #     batchsize = int(self.M/5)
         # elif batchsize == "full":

@@ -31,15 +31,12 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     # Plotting scatter of psi_{opt} vs psi_{*}
     theta_opt = dict_results['x']
     psi_opt = length_adjustment_inverse(theta_opt, lengths)
-    
+
     # plot_scatter(title, theta_opt, dict_simulation['theta_sampled'], horizontal=False)
     # plot_scatter(title, theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
-
-    plot_scatter(title, theta_opt, dict_simulation['theta_sampled'], horizontal=False)
-    plot_scatter(title, theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
     
-    # plot_scatter(title, psi_opt, psi_true, horizontal=False)
-    # plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)    
+    plot_scatter(title, psi_opt, psi_true, horizontal=False)
+    plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)    
     RMSE = np.sqrt(np.linalg.norm(psi_true - psi_opt)/psi_true.shape)
     print("MSE distance to solution = ", str(RMSE))
     print("L1 distance to psi_true = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
@@ -98,24 +95,23 @@ if __name__ == '__main__':
     # p=0.1
     # filename ="sampled_genome_"+str(p)
     K = 15
-    N = 20000000
+    N = 10000000
     L = 100 
     alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
-    force_repeat = True
+    force_repeat = False
     print("experiment (N, L, K) = (", str(N),", ",str(L), ", ", str(K), ")" )
     tic = time.perf_counter()
     READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
     dict_simulation = load_simulation_parameters(filename, N, L, alpha)
-    lengths = load_lengths(filename, N, L)
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
 
     # if dict_opt is None or force_repeat == True:
-    dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 40000, force_repeat = force_repeat) 
-    save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
+    # dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 40000, force_repeat = force_repeat) 
+    # save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
 
-    # dict_opt = load_run_result(filename, model_type, N, L,  K)
+    lengths = load_lengths(filename, N, L)
     plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulation, lengths)
 
 
