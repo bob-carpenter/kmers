@@ -66,6 +66,11 @@ of now the latest version is GRCh38.  Place that in a directory called
 and you should be good to execute all of the tests or use that for the
 isoform file.
 
+Executing 
+```console
+> python3 download_data.py 
+```
+will download the latest version (as of 10th of April 2022) into the `/data` directory.
 
 ## Documentation
 

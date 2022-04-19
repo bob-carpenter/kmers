@@ -28,15 +28,15 @@ else:
     model_class = msm.multinomial_simplex_model
 
 
-filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-K = 15
-N = 5000000
-L = 100
-# filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
-# K = 5
-# N = 1000
-# L = 14
-force_repeat = False
+# filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+# K = 15
+# N = 5000000
+# L = 100
+filename = "test4.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
+K = 5
+N = 1000
+L = 14
+force_repeat = True
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K)
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(filename, N, L, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
@@ -62,7 +62,7 @@ toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
 ## Plotting
-dict_simulation = load_simulation_parameters(filename, N, L)
+dict_simulation = load_simulation_parameters(filename, N, L, alpha=1)
 theta_true  = dict_simulation['theta_true']
 theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']
