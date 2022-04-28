@@ -32,8 +32,8 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     theta_opt = dict_results['x']
     psi_opt = length_adjustment_inverse(theta_opt, lengths)
 
-    # plot_scatter(title, theta_opt, dict_simulation['theta_sampled'], horizontal=False)
-    # plot_scatter(title, theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
+    plot_scatter(title+"-theta", theta_opt, dict_simulation['theta_sampled'], horizontal=False)
+    plot_scatter(title+"-theta", theta_opt,  theta_opt-dict_simulation['theta_sampled'], horizontal=True)
     
     plot_scatter(title, psi_opt, psi_true, horizontal=False)
     plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)    
@@ -43,7 +43,7 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     print("L1 distance to theta_true = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
     print("L1 distance to theta_sampled = ", str(np.linalg.norm(dict_simulation['theta_sampled'] - theta_opt, ord =1)))
 
-def run_model(filename, model_type, N, L, K, alpha=None, n_iters = 5000, batchsize= None,  force_repeat = True):
+def run_model(filename, model_type, N, L, K, alpha=None, n_iters = 5000,  force_repeat = True):
    # Need to check if y and X already exit. And if so, just load them.
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha = alpha)
     tic = time.perf_counter()
@@ -66,12 +66,7 @@ def run_model(filename, model_type, N, L, K, alpha=None, n_iters = 5000, batchsi
     tic = time.perf_counter()
     print("Fittting model: ", model_type)
 
-    if model_class == "simplex": # Initializing iterates using the length adjustment transform
-        lengths = load_lengths(filename, N, L)
-        model.initialize_iterates(lengths)
-        dict_opt= model.fit(theta0=None, n_iters=n_iters, batchsize=batchsize)
-    else:
-        dict_opt = model.fit(theta0=None, n_iters=n_iters)
+    dict_opt = model.fit(theta0=None, n_iters=n_iters)
     
     toc = time.perf_counter()
     dict_opt['fit-time'] = toc - tic
@@ -99,16 +94,14 @@ if __name__ == '__main__':
     L = 100 
     alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
     force_repeat = False
-    print("experiment (N, L, K) = (", str(N),", ",str(L), ", ", str(K), ")" )
+    print("experiment (N, L, K) = (",str(N),", ",str(L), ", ",str(K), ")" )
     tic = time.perf_counter()
     READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
     toc = time.perf_counter()
     dict_simulation = load_simulation_parameters(filename, N, L, alpha)
     print(f"Created reads in {toc - tic:0.4f} seconds")
 
-
-    # if dict_opt is None or force_repeat == True:
-    # dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 40000, force_repeat = force_repeat) 
+    # dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 80000, force_repeat = force_repeat) 
     # save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
 
     lengths = load_lengths(filename, N, L)

@@ -10,8 +10,9 @@ def plot_scatter(title,xaxis,yaxis, horizontal = False):
         plt.plot([0,np.max(xaxis)], [0,0], '--')
         plt.ylabel(r"$ \psi^{opt} - \psi^{*}$", fontsize=25)
     else :
+        max_scal = np.max([np.max(xaxis), np.max(yaxis)])
         title = title + "-psi-scatter"
-        plt.plot([0,np.max(xaxis)], [0,np.max(yaxis)], '--')
+        plt.plot([0,max_scal], [0,max_scal], '--')
         plt.ylabel(r"$ \psi^{*}$", fontsize=25)
 
     plt.xlabel(r"$ \psi^{opt}$", fontsize=25)

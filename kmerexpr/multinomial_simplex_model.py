@@ -43,7 +43,9 @@ class multinomial_simplex_model:
         * T: number of target isoforms
 
     All operations are on the log scale, with target log posterior
-        log p(theta | y) = y' * log(x * theta) - (beta-1) * sum(theta), subject to theta in T-simplex
+        log p(theta | y) = y' * log(x * theta) - (beta-1) * ( sum(log theta) - log sum(theta / Lengths) )),
+        
+    subject to theta in T-simplex, where Lengths is the T-vector of lengths of the reference set of isoforms.
 
     The constructor instantiates a model based on two arguments
     corresponding to x and y.  Because x is so large, it is loaded from
@@ -94,8 +96,8 @@ class multinomial_simplex_model:
     def logp_grad(self, theta = None, batch=None, eps = 1e-10):
         """Return negative log density and its gradient evaluated at the
         specified simplex.
-         loss(theta) = y' log(X'theta) + (beta-1 )
-         grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 )
+         loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+         grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
@@ -103,11 +105,13 @@ class multinomial_simplex_model:
         # assert len(dim) == 1
         # theta_rows = dim[0]
         # assert theta_rows == self.T
+        mask = theta <=0
+        thetamask = theta[mask]
         xthetannz = self.xnnz.dot(theta) 
-        functionValue = self.ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(theta))
+        functionValue = self.ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(thetamask))
         yxTtheta = self.ynnz / xthetannz
-        t1 = yxTtheta@(self.xnnz) # x[ymask].T.dot(yxTtheta)
-        gradient = t1 + (self.beta - 1)/theta
+        gradient = yxTtheta@(self.xnnz) # x[ymask].T.dot(yxTtheta)
+        gradient[mask] += (self.beta - 1.0)/thetamask
         return functionValue, gradient
 
     def initialize_iterates_uniform(self, lengths=None):
@@ -118,25 +122,27 @@ class multinomial_simplex_model:
             theta0 = length_adjustment(theta0,lengths)
         return theta0
 
-    def initialize_iterates_Xy(self, lengths=None):
+    def initialize_iterates_Xy(self):
             #should use beta and dichlet to initialize? Instead of always uniform?
         theta0 = self.ynnz @ self.xnnz
         theta0 = theta0/theta0.sum()
         return theta0      
 
-    def initialize_iterates_lsq(self, lengths=None):
+    def initialize_iterates_lsq(self, iterations=200, mult_fact_neg =10):
             #should use beta and dichlet to initialize? Instead of always uniform?
-        theta0, istop, itn, r1norm = lsqr(self.xnnz, self.ynnz/self.N,  iter_lim=200)[:4]
+        theta0, istop, itn, r1norm = lsqr(self.xnnz, self.ynnz/self.N,  iter_lim=iterations)[:4]
+        mintheta = np.min(theta0[theta0>0])
+        theta0[theta0 <= 0] =mintheta/mult_fact_neg
         theta0 = theta0/theta0.sum()
         return theta0       
 
     def fit(self, theta0=None, tol=1e-8, gtol=1e-8, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
 
         if theta0 is None:  #initialize to uniform
-            theta0 = self.initialize_iterates_Xy()
+            theta0 = self.initialize_iterates_lsq()
         # if batchsize is None:
-        #     batchsize = int(self.M/5)
-        # elif batchsize == "full":
+        #     batchsize = int(self.M/5)              
+        # elif batchsize == "full":     
         batchsize = None
 
         dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M, continue_from = continue_from)
