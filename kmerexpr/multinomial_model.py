@@ -147,7 +147,6 @@ class multinomial_model:
         t_3 = (self.xnnz.T).dot(self.ynnz / xTsignnz)
         functionValue = self.ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) *self.beta)
         gradient = t_3 * sig - self.N * sig - (2 *self.beta) * theta
-        # Double check: Think ((sig).dot(t_3)*sig )) = sum(y)*sig = N*sig
         return functionValue, gradient
 
 

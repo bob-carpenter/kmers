@@ -4,7 +4,7 @@ import numpy as np
 
 
 def plot_scatter(title,xaxis,yaxis, horizontal = False):
-    plt.scatter(xaxis,yaxis , s=10, alpha=0.5 )  #theta_opt
+    plt.scatter(xaxis,yaxis , s=0.7, alpha=0.4 )  #theta_opt
     if horizontal:
         title = title + "-psi-minus-scatter"
         plt.plot([0,np.max(xaxis)], [0,0], '--')
