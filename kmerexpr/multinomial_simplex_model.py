@@ -24,7 +24,7 @@ from scipy.sparse.linalg import lsqr
 from scipy import optimize
 from exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
-from simulate_reads import length_adjustment
+from simulate_reads import length_adjustment, length_adjustment_inverse
 
 # BMW: Class names are usually done in CamelCase style
 class multinomial_simplex_model:
