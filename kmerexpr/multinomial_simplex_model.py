@@ -105,8 +105,8 @@ class multinomial_simplex_model:
         # assert len(dim) == 1
         # theta_rows = dim[0]
         # assert theta_rows == self.T
-        mask = theta <=0
-        thetamask = theta[mask]
+        mask = theta <=0  # looks wrong way round!
+        thetamask = theta[mask] 
         xthetannz = self.xnnz.dot(theta) 
         functionValue = self.ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(thetamask))
         yxTtheta = self.ynnz / xthetannz
@@ -143,7 +143,7 @@ class multinomial_simplex_model:
         # if batchsize is None:
         #     batchsize = int(self.M/5)              
         # elif batchsize == "full":     
-        batchsize = None
+        batchsize = None #not currently in use, will probably remove
 
         dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M, continue_from = continue_from)
         return dict_sol

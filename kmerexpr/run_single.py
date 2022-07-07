@@ -38,7 +38,7 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     plot_scatter(title, psi_opt, psi_true, horizontal=False)
     plot_scatter(title, psi_opt,  psi_opt-psi_true, horizontal=True)    
     RMSE = np.sqrt(np.linalg.norm(psi_true - psi_opt)/psi_true.shape)
-    print("MSE distance to solution = ", str(RMSE))
+    print("MSE distance to psi_true = ", str(RMSE))
     print("L1 distance to psi_true = ", str(np.linalg.norm(psi_true - psi_opt, ord =1)))
     print("L1 distance to theta_true = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
     print("L1 distance to theta_sampled = ", str(np.linalg.norm(dict_simulation['theta_sampled'] - theta_opt, ord =1)))
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     # p=0.1
     # filename ="sampled_genome_"+str(p)
     K = 15
-    N = 10000000
+    N = 5000000
     L = 100 
     alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
     force_repeat = False
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     toc = time.perf_counter()
     dict_simulation = load_simulation_parameters(filename, N, L, alpha)
     print(f"Created reads in {toc - tic:0.4f} seconds")
-
+    import pdb; pdb.set_trace()
     # dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 80000, force_repeat = force_repeat) 
     # save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
 
