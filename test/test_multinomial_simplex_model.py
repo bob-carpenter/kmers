@@ -11,19 +11,21 @@ ROOT = os.path.dirname(HERE)
 DATA_PATH = os.path.join(HERE, "data")
 
 
-def test1():
+def test_grad_setup():
     ISO_FILE = os.path.join(DATA_PATH, "test4.fsa")
     X_FILE = os.path.join(DATA_PATH, "x4_csr.npz")
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     y_test = np.random.poisson(5, 4 ** K)
     model = mm.multinomial_simplex_model(X_FILE, y_test)
-    os.remove(X_FILE)
     assert model.T == 3
     assert model.M == 16
     alpha = 0.5 * np.ones(model.T)
     theta_test = np.random.dirichlet(alpha)
     check_gradient(model, theta_test)
+    model = mm.multinomial_simplex_model(X_FILE, y_test, beta = 0.5)
+    check_gradient(model, theta_test)
+    os.remove(X_FILE)
 
 @pytest.mark.slow
 def test_human_transcriptome():

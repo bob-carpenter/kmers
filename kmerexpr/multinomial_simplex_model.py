@@ -59,7 +59,7 @@ class multinomial_simplex_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta=1.0):
+    def __init__(self, x_file=None, y_file=None, beta=1.0, lengths=None, solver="exp_grad"):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -68,6 +68,8 @@ class multinomial_simplex_model:
         y_file -- path to total counts of each kmer
         beta -- the parameter of the Dirchlet distribution. Default beta =1 is equivalent to using no prior or a uniform prior
         y -- vector of k-mer counts
+        lengths -- an array of the lengths of the isoforms
+        solver -- a string that is either mirror_bfgs or exp_grad, which are the two available solvers for fitting the model
         """
         x = load_npz(x_file)
         if(isinstance(y_file, np.ndarray)):
@@ -83,6 +85,8 @@ class multinomial_simplex_model:
         x_dim = x.shape
         self.M = x_dim[0]
         self.T = x_dim[1] 
+        self.lengths = lengths
+        self.solver = solver
         # dimension checking
         assert len(x_dim) == 2
         x_rows = x_dim[0]
@@ -91,9 +95,12 @@ class multinomial_simplex_model:
         assert len(dim) == 1
         y_rows = dim[0]
         assert y_rows == x_rows
+        if lengths is not None:
+            assert len(lengths) == x_cols
+        else:
+            self.lengths = np.ones(x_cols)
 
-
-    def logp_grad(self, theta = None, batch=None, eps = 1e-10):
+    def logp_grad(self, theta = None, batch=None):
         """Return negative log density and its gradient evaluated at the
         specified simplex.
          loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
@@ -105,14 +112,17 @@ class multinomial_simplex_model:
         # assert len(dim) == 1
         # theta_rows = dim[0]
         # assert theta_rows == self.T
-        mask = theta <=0  # looks wrong way round!
+        mask = theta >0  
         thetamask = theta[mask] 
         xthetannz = self.xnnz.dot(theta) 
-        functionValue = self.ynnz.dot(np.log(xthetannz)) + (self.beta - 1)*np.sum(np.log(thetamask))
+        functionValue = self.ynnz.dot(np.log(xthetannz)) 
+        functionValue += (self.beta - 1)*np.sum(np.log(thetamask/self.lengths[mask]))
+        functionValue -= (self.beta - 1)*np.log(np.sum(thetamask/self.lengths[mask]))
         yxTtheta = self.ynnz / xthetannz
         gradient = yxTtheta@(self.xnnz) # x[ymask].T.dot(yxTtheta)
         gradient[mask] += (self.beta - 1.0)/thetamask
-        return functionValue, gradient
+        gradient[mask] -= (self.beta - 1.0)/(np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
+        return functionValue/self.ynnz.shape[0], gradient/self.ynnz.shape[0]
 
     def initialize_iterates_uniform(self, lengths=None):
         #should use beta and dichlet to initialize? Instead of always uniform?
@@ -136,7 +146,7 @@ class multinomial_simplex_model:
         theta0 = theta0/theta0.sum()
         return theta0       
 
-    def fit(self, theta0=None, tol=1e-8, gtol=1e-8, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
+    def fit(self, theta0=None, tol=1e-12, gtol=1e-12, n_iters = 100, lrs = None,  batchsize = None, continue_from =0):
 
         if theta0 is None:  #initialize to uniform
             theta0 = self.initialize_iterates_lsq()
@@ -144,6 +154,8 @@ class multinomial_simplex_model:
         #     batchsize = int(self.M/5)              
         # elif batchsize == "full":     
         batchsize = None #not currently in use, will probably remove
-
-        dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M, continue_from = continue_from)
+        if self.solver=="mirror_bfgs":
+            dict_sol = mirror_bfgs(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M, continue_from = continue_from)
+        else:
+            dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  batchsize = batchsize, n = self.M, continue_from = continue_from)
         return dict_sol

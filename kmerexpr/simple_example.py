@@ -27,17 +27,17 @@ else:
     model_class = msm.multinomial_simplex_model
 
 
-filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-K = 15
-N = 5000000
-L = 100
-# filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
-# K = 11
-# N = 1000
-# L = 14
+# filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+# K = 15
+# N = 5000000
+# L = 100
+filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
+K = 11
+N = 1000
+L = 14
 
 alpha = 0.01
-force_repeat = False
+force_repeat = True
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
@@ -49,7 +49,8 @@ tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
-model = model_class(X_FILE, Y_FILE) # initialize model. beta =1 is equivalent to no prior/regularization
+lengths = load_lengths(filename, N, L)
+model = model_class(X_FILE, Y_FILE, beta = alpha, lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
 dict_results= model.fit(n_iters =2000)
@@ -68,14 +69,13 @@ if model_type=='simplex':
     plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)
 
 # Plotting scatter of theta_{opt} vs theta_{*} for a fixed k
-lengths = load_lengths(filename, N, L)
 theta_opt = dict_results['x']
 psi_opt = length_adjustment_inverse(theta_opt, lengths)
 plot_scatter(title,psi_opt,psi_true)
 plot_scatter(title,psi_opt,psi_opt- psi_true, horizontal=True)
 
-plot_scatter(title,theta_opt,theta_sampled)
-plot_scatter(title,theta_opt,theta_opt- theta_sampled, horizontal=True)
+# plot_scatter(title,theta_opt,theta_sampled)
+# plot_scatter(title,theta_opt,theta_opt- theta_sampled, horizontal=True)
 
 # Delete the data
 # os.remove(X_FILE)  # delete X file
