@@ -108,10 +108,6 @@ class multinomial_simplex_model:
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
-        # dim = theta.shape
-        # assert len(dim) == 1
-        # theta_rows = dim[0]
-        # assert theta_rows == self.T
         mask = theta >0  
         thetamask = theta[mask] 
         xthetannz = self.xnnz.dot(theta) 
@@ -122,7 +118,7 @@ class multinomial_simplex_model:
         gradient = yxTtheta@(self.xnnz) # x[ymask].T.dot(yxTtheta)
         gradient[mask] += (self.beta - 1.0)/thetamask
         gradient[mask] -= (self.beta - 1.0)/(np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
-        return functionValue/self.ynnz.shape[0], gradient/self.ynnz.shape[0]
+        return functionValue, gradient
 
     def initialize_iterates_uniform(self, lengths=None):
         #should use beta and dichlet to initialize? Instead of always uniform?

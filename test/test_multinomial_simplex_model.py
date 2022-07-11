@@ -23,7 +23,7 @@ def test_grad_setup():
     alpha = 0.5 * np.ones(model.T)
     theta_test = np.random.dirichlet(alpha)
     check_gradient(model, theta_test)
-    model = mm.multinomial_simplex_model(X_FILE, y_test, beta = 0.5)
+    model = mm.multinomial_simplex_model(X_FILE, y_test, beta = 0.1)
     check_gradient(model, theta_test)
     os.remove(X_FILE)
 
