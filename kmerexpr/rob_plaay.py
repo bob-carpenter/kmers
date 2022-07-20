@@ -1,3 +1,4 @@
+
 import multinomial_model as mm
 import multinomial_simplex_model as msm
 import normal_model as mnm
@@ -25,8 +26,20 @@ elif(model_type == "normal"):
     model_class = mnm.normal_model
 else:
     model_class = msm.multinomial_simplex_model
+# solver = "experimental_lbfgs"
+# solver = "mirror_lbfgs"
+# solver = "exp_grad"
+solver = "accel_mirror"
+# filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
+# K = 15
+# N = 5000000
+# L = 100
 
-solver = "exp_grad"
+# p=0.1
+# filename ="sampled_genome_"+str(p)
+# K = 15
+# N = 5000000
+# L = 100 
 
 filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
 K = 11
@@ -34,25 +47,24 @@ N = 1000
 L = 14
 
 alpha = 0.1
-force_repeat = True
+force_repeat = False
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
 dict_simulation = load_simulation_parameters(filename, N, L, alpha= alpha)
 # Create y and X and save to file 
-
-reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
-tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
+# reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
+# tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
-beta = 1
-# beta = alpha
 lengths = load_lengths(filename, N, L)
-model = model_class(X_FILE, Y_FILE, beta = beta, lengths=lengths, solver =solver) # initialize model. beta =1 is equivalent to no prior/regularization
+# beta = 0.5
+beta = 1.0  # Which means no regularization
+model = model_class(X_FILE, Y_FILE, beta = beta, lengths=lengths, solver=solver) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(n_iters =2000)
+dict_results= model.fit(n_iters =1000, tol=1e-16, gtol=1e-16, Hessinv = True)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
@@ -73,6 +85,8 @@ psi_opt = length_adjustment_inverse(theta_opt, lengths)
 plot_scatter(title,psi_opt,psi_true)
 plot_scatter(title,psi_opt,psi_opt- psi_true, horizontal=True)
 
+# plot_scatter(title,theta_opt,theta_sampled)
+# plot_scatter(title,theta_opt,theta_opt- theta_sampled, horizontal=True)
 
 # Delete the data
 # os.remove(X_FILE)  # delete X file

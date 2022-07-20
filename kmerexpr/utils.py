@@ -23,8 +23,10 @@ def get_path_names(filename, N, L, K, alpha=None):
     Y_FILE = prefix + "Y-" + surfix + "-" + str(K)
     if alpha is None:
         Y_FILE = Y_FILE + ".npy"
+        READS_FILE =  READS_FILE + ".fna"
     else:
         Y_FILE = Y_FILE +"-a-" +str(alpha) + ".npy"
+        READS_FILE =  READS_FILE +"-a-" +str(alpha) + ".fna"
     return ISO_FILE, READS_FILE, X_FILE, Y_FILE
 
 def save_lengths(filename, N, L, lengths):

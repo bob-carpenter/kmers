@@ -23,7 +23,8 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     theta_true = dict_simulation['theta_true']
     psi_true = dict_simulation['psi']
     # Plotting error vs iterations for simplex method
-    title = filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) +'-alpha-'+str(alpha)
+    # title = filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) +'-alpha-'+str(alpha)
+    title = filename+'-'+model_type + "-" + solver+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) +'-alpha-'+str(alpha)
     if model_type == "simplex":
         title_errors =title + '-theta-errors'
         plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)

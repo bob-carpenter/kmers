@@ -17,6 +17,7 @@ def length_adjustment_inverse(theta, lengths):
 
 def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     """
+    Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample), then samples the reads from this subsampled data.
     filename:  a string that will be the surfix of generated data where
                 "read"+filename will be reads data
                 "x"+filename the transciptome matrix
@@ -56,7 +57,6 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     y_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
     bins = np.bincount(y_sampled, minlength=T)
-    # look for bincount function
     theta_sampled = bins/N
     save_simulation_parameters(filename, N, L, alpha, psi, theta_true, theta_sampled)
     save_lengths(filename, N, L, lengths)
