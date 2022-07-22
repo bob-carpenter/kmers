@@ -29,7 +29,8 @@ else:
 # solver = "experimental_lbfgs"
 # solver = "mirror_lbfgs"
 # solver = "exp_grad"
-solver = "accel_mirror"
+# solver = "accel_mirror"
+solver = "frank_wolfe"
 # filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
 # K = 15
 # N = 5000000
@@ -59,12 +60,12 @@ toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
 lengths = load_lengths(filename, N, L)
-# beta = 0.5
-beta = 1.0  # Which means no regularization
+beta = 0.1
+# beta = 1.0  # Which means no regularization
 model = model_class(X_FILE, Y_FILE, beta = beta, lengths=lengths, solver=solver) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(n_iters =1000, tol=1e-16, gtol=1e-16, Hessinv = True)
+dict_results= model.fit(n_iters =200, tol=1e-16, gtol=1e-16, Hessinv = False)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 

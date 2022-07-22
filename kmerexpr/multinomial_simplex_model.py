@@ -27,6 +27,7 @@ from mirror_lbfgs import mirror_lbfgs
 from scipy.special import softmax as softmax
 from simulate_reads import length_adjustment, length_adjustment_inverse
 from accel_mirror_solver import accel_mirror_solver
+from frank_wolfe import frank_wolfe_solver
 # BMW: Class names are usually done in CamelCase style
 class multinomial_simplex_model:
     """Multinomial model of k-mer reads with a simplex constraint
@@ -113,11 +114,17 @@ class multinomial_simplex_model:
         mask = theta >0  
         thetamask = theta[mask] 
         xthetannz = self.xnnz.dot(theta) 
+        # maskxtheta = xthetannz >0
+        # xthetamask = xthetannz[maskxtheta]
+        # functionValue = self.ynnz[maskxtheta].dot(np.log(xthetamask))
         functionValue = self.ynnz.dot(np.log(xthetannz)) 
         functionValue += (self.beta - 1.0)*np.sum(np.log(thetamask))
         # functionValue += (self.beta - 1.0)*np.sum(np.log(thetamask/self.lengths[mask]))
         # functionValue -= (self.beta - 1.0)*np.log(np.sum(thetamask/self.lengths[mask]))
+        # yxTtheta = self.ynnz[maskxtheta] / xthetamask
         yxTtheta = self.ynnz / xthetannz
+        # gradient = np.zeros(theta.shape)
+        # gradient = yxTtheta@(self.xnnz[maskxtheta])
         gradient = yxTtheta@(self.xnnz) # x[ymask].T.dot(yxTtheta)
         gradient[mask] += (self.beta - 1.0)/thetamask
         # gradient[mask] -= (self.beta - 1.0)/(np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
@@ -160,6 +167,8 @@ class multinomial_simplex_model:
         if self.solver=="mirror_lbfgs":
             # lrs = np.ones(1)
             dict_sol = mirror_lbfgs(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,  n = self.M)
+        elif self.solver=="frank_wolfe":
+            dict_sol = frank_wolfe_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
         elif self.solver=="exp_grad":
             dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
         elif self.solver== "accel_mirror":
