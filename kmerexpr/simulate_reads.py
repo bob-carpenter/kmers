@@ -17,7 +17,8 @@ def length_adjustment_inverse(theta, lengths):
 
 def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     """
-    Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample), then samples the reads from this subsampled data.
+    Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
+    then samples the reads from this subsampled data.
     filename:  a string that will be the surfix of generated data where
                 "read"+filename will be reads data
                 "x"+filename the transciptome matrix
@@ -26,7 +27,7 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     N = number of reads, must be greater than number of isoforms in ISO_FILE
     alpha = parameter of Dirchlet distribution that generates psi
     """
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K=1) # dont worry about this K=1. It only affects the Y_FILE, which is not used here
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K=1, alpha=alpha) # dont worry about this K=1. It only affects the Y_FILE, which is not used here
     if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed
         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
         return READS_FILE

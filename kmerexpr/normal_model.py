@@ -36,7 +36,7 @@ class normal_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta =0.0001):
+    def __init__(self, x_file=None, y_file=None, beta =0.0001, lengths=None, solver='lsq_linear'):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -52,8 +52,8 @@ class normal_model:
             self.y = np.load(y_file)
         self.N = np.sum(self.y)
         self.beta = beta
-        self.name = "softmax+lbfgs"
-
+        self.name = "normal"
+        self.solver ="lsq_linear"
     def M(self):
         return self.x.shape[0]
 

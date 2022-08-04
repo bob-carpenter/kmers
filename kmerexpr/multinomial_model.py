@@ -67,7 +67,7 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta =1/18): 
+    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver = 'lbfgs'): 
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -90,6 +90,7 @@ class multinomial_model:
         self.M = x_dim[0]
         self.T = x_dim[1] 
         self.beta =beta
+        self.solver = solver
         # dimension checking
         assert len(x_dim) == 2
         x_rows = x_dim[0]

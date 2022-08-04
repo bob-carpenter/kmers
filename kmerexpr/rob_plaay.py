@@ -65,7 +65,7 @@ beta = 0.1
 model = model_class(X_FILE, Y_FILE, beta = beta, lengths=lengths, solver=solver) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(n_iters =200, tol=1e-16, gtol=1e-16, Hessinv = False)
+dict_results= model.fit(n_iters =1000, tol=1e-16, gtol=1e-16, Hessinv = False)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
