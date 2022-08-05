@@ -15,9 +15,9 @@ import time
 import scipy
 random.seed(42) 
 
-model_type = "simplex" 
+# model_type = "simplex" 
 # model_type = "softmax"
-# model_type = "normal"
+model_type = "normal"
 
 if(model_type == "softmax"):
     model_class = mm.multinomial_model
@@ -31,7 +31,7 @@ else:
 # K = 15
 # N = 5000000
 # L = 100
-filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
+filename = "test4.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
 K = 11
 N = 1000
 L = 14
