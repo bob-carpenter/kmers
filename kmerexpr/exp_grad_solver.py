@@ -20,7 +20,7 @@ def update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,
     loss_records.append(loss)
     iteration_counts.append(iter)
 
-def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  batchsize = None, n = None, continue_from = 0):
+def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False, continue_from = 0):
     """
     Exponentiated Gradient Descent for minimizing
     max l(x)  s.t. sum(x) = 1 and x>0
@@ -34,7 +34,7 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     x = x_0.copy()
     x_av = x_0.copy()
     momentum = 0.9
-    loss0, grad0  = loss_grad(x_0)
+    loss0, grad0  = loss_grad(x_0, Hessinv)
     grad = grad0.copy()
     normg0 = sqrt(grad0 @ grad0)
     norm_records = []
@@ -47,24 +47,23 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
         if lrs is None:
             if iter < num_steps_before_decrease:
                 lrst = 2**(-1/2)/(norm(grad, np.inf) )
+            elif Hessinv:
+                lrst = 1/(norm(grad, np.inf)*(iter+1-num_steps_before_decrease+continue_from)**2 )
             else:
                 lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
         elif lrs.shape == (1,):
             lrst = lrs[0]
         else:
             lrst = lrs[iter]
-        # alternative update using prod exp function
+        # Update using prod exp function
         x_new = prod_exp_normalize(x, lrst*grad)
         # x_new = softmax(np.log(x) +lrst*grad)  # 
         if np.isnan(x_new.sum()):
             print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )
             break
         x_av = momentum*x_av +(1-momentum)*x_new
-        if batchsize is None:
-            loss, grad_new  = loss_grad(x_new)
-        else:
-            batch = np.random.choice(n, batchsize)
-            loss, grad_new  = loss_grad(x_new, batch = batch)
+
+        loss, grad_new  = loss_grad(x_new, Hessinv = Hessinv)
         
         # Checking if method is stopping
         if norm(x_new - x, ord =1) <= tol:
