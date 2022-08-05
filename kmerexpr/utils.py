@@ -1,8 +1,5 @@
 import os
 import numpy as np
-import transcriptome_reader as tr
-from rna_seq_reader import reads_to_y
-import time
 import pickle
 
 def get_path_prefix_surfix(name, N, L):
@@ -44,7 +41,6 @@ def save_simulation_parameters(filename, N, L, alpha,  psi=None, theta_true=None
     DICT_FILE = prefix + "SIM_PARAMETERS" + surfix + str(alpha)
     dict = {}
     dict['alpha'] = alpha
-    # dict['lengths'] = lengths
     dict['psi'] = psi
     dict['theta_true'] = theta_true
     dict['theta_sampled'] = theta_sampled
