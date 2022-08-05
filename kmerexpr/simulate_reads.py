@@ -50,22 +50,22 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     T = len(isoforms)
     print("isoforms found = ", T)
     alphas = alpha*np.ones(T)
-    psi= np.random.dirichlet(alphas) # uniformly generated. Should use a sparser ground truth?
+    psi= np.random.dirichlet(alphas)
     lengths = np.asarray(lengths_list)
     theta_true= length_adjustment(psi, lengths)
     print("theta[0:10] =", theta_true[0:10])
     print("theta[K-10:K] =", theta_true[T - 10 : T])
-    y_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
+    iso_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
-    bins = np.bincount(y_sampled, minlength=T)
+    bins = np.bincount(iso_sampled, minlength=T)
     theta_sampled = bins/N
     save_simulation_parameters(filename, N, L, alpha, psi, theta_true, theta_sampled)
     save_lengths(filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
-        for n in range(N): #range(T): Rob: Used to be number of isoforms, but that's incorrect? We are writing the reads file, which has N rows
+        for n in range(N): 
             if (n + 1) % 100000 == 0:
                 print("sim n = ", n + 1)
-            seq = isoforms[y_sampled[n]]
+            seq = isoforms[iso_sampled[n]]
             start = np.random.choice(len(seq) - L + 1)
             out.write(">sim-")
             out.write(str(n))

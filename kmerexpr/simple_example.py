@@ -15,9 +15,9 @@ import time
 import scipy
 random.seed(42) 
 
-# model_type = "simplex" 
+model_type = "simplex" 
 # model_type = "softmax"
-model_type = "normal"
+# model_type = "normal"
 
 if(model_type == "softmax"):
     model_class = mm.multinomial_model
@@ -32,23 +32,17 @@ N = 1000
 L = 14
 
 alpha = 0.1  #The parameter of the Dirchlet that generates reads
-ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
-tic = time.perf_counter()
+ISO_FILE, ISO_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha) 
 
 # Create y and X and save to file 
 reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
 tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
-toc = time.perf_counter()
-print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
+print(f"Created reads, counts and transciptome matrix x")
 
 lengths = load_lengths(filename, N, L) # get read lengths
 model = model_class(X_FILE, Y_FILE, lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
-
-tic = time.perf_counter()
-dict_results= model.fit(n_iters =2000)
-toc = time.perf_counter()
-print(f"Fitting model took {toc - tic:0.4f} seconds")
+dict_results= model.fit(n_iters =200)
 
 ## Plotting
 dict_simulation = load_simulation_parameters(filename, N, L, alpha= alpha) #Getting ground truth for evaluation
