@@ -27,7 +27,7 @@ from mirror_lbfgs import mirror_lbfgs
 from scipy.special import softmax as softmax
 from simulate_reads import length_adjustment, length_adjustment_inverse
 from accel_mirror_solver import accel_mirror_solver
-from frank_wolfe import frank_wolfe_solver
+# from frank_wolfe import frank_wolfe_solver
 # BMW: Class names are usually done in CamelCase style
 class multinomial_simplex_model:
     """Multinomial model of k-mer reads with a simplex constraint
