@@ -9,7 +9,7 @@ import numpy as np
 import os 
 from utils import get_path_names, load_lengths
 from utils import load_simulation_parameters, load_run_result
-from plotting import plot_error_vs_iterations, plot_scatter
+from plotting import plot_error_vs_iterations, plot_scatter, get_plot_title
 import random
 import time
 import scipy
@@ -32,7 +32,7 @@ N = 1000
 L = 14
 
 alpha = 0.1  #The parameter of the Dirchlet that generates reads
-ISO_FILE, ISO_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
+ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha) 
 
 # Create y and X and save to file 
@@ -50,7 +50,8 @@ theta_true  = dict_simulation['theta_true']
 theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']
 
-title = filename+'-'+model_type + "-" + model.solver+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
+title = get_plot_title(filename,model_type,N,L,K)
+
 if model_type=='simplex':
     title_errors=title +'-theta-errors-'
     plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)

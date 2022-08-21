@@ -19,7 +19,7 @@ def backtrack(n, x, fx, g, loss_grad, d, step, xp, lbfgs_parameters):
 
 	while True:
 		# x = xp
-		x = x + d * step;
+		x = x + d * step
 		# Evaluate the function and gradient values. 
 		# this would change g
 		fx, g = loss_grad(x)

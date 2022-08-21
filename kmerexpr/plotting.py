@@ -3,6 +3,12 @@ import os
 import numpy as np
 
 
+def get_plot_title(filename,model_type,N,L,K, solver=False):
+    if solver:
+        return  filename+'-'+model_type + "-" + solver+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
+    else:
+        return  filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
+        
 def plot_scatter(title,xaxis,yaxis, horizontal = False):
     plt.scatter(xaxis,yaxis , s=5, alpha=0.4 )  #theta_opt
     if horizontal:

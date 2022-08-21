@@ -2,6 +2,14 @@ import os
 import numpy as np
 import pickle
 
+
+def linesearch_simplex(x,d,func):
+    """
+
+
+    """
+    a =1
+    return x+a*d
 def get_path_prefix_surfix(name, N, L):
     HERE = os.path.dirname(os.path.abspath(__file__))
     ROOT = os.path.dirname(HERE)

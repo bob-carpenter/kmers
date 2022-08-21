@@ -10,7 +10,7 @@ import numpy as np
 import os 
 from utils import get_path_names, load_lengths
 from utils import load_simulation_parameters, load_run_result
-from plotting import plot_error_vs_iterations, plot_scatter
+from plotting import plot_error_vs_iterations, plot_scatter, get_plot_title
 import random
 import time
 import scipy
@@ -48,14 +48,14 @@ N = 1000
 L = 14
 
 alpha = 0.1
-force_repeat = False
+force_repeat = True
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
 dict_simulation = load_simulation_parameters(filename, N, L, alpha= alpha)
 # Create y and X and save to file 
-# reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
-# tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
+reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
+tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
@@ -75,7 +75,8 @@ theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']
 
 
-title = filename+'-'+model_type + "-" + solver+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
+title = get_plot_title(filename,model_type,N,L,K, solver)
+
 if model_type=='simplex':
     title_errors=title +'-theta-errors-'
     plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)

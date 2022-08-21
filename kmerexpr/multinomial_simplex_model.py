@@ -27,7 +27,23 @@ from mirror_lbfgs import mirror_lbfgs
 from scipy.special import softmax as softmax
 from simulate_reads import length_adjustment, length_adjustment_inverse
 from accel_mirror_solver import accel_mirror_solver
-# from frank_wolfe import frank_wolfe_solver
+from frank_wolfe import frank_wolfe_solver
+
+def linesearch_simplex(x,d,func):
+    """
+        x: starting point, numpy array in the simplex
+        d: search direction, numpy array
+
+    Line search over f(soft_max(x+a*d))?
+    Determines a stepsize a such that f(x+a*d) < f(x)+eps *norm(grad(x+a*d)) 
+    and x+a*d is in the simplex. But this requires sum(d) =0 which is very unlikely to hold?
+    """
+    a =1
+    #Determine max possible stepsize
+
+    return x+a*d
+
+
 # BMW: Class names are usually done in CamelCase style
 class multinomial_simplex_model:
     """Multinomial model of k-mer reads with a simplex constraint
@@ -102,7 +118,7 @@ class multinomial_simplex_model:
         else:
             self.lengths = np.ones(x_cols)
 
-    def logp_grad(self, theta = None, batch=None, Hessinv=False):
+    def logp_grad(self, theta = None, batch=None, Hessinv=False, nograd=False):
         """Return negative log density and its gradient evaluated at the
         specified simplex.
          loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
@@ -119,6 +135,8 @@ class multinomial_simplex_model:
         # functionValue = self.ynnz[maskxtheta].dot(np.log(xthetamask))
         functionValue = self.ynnz.dot(np.log(xthetannz)) 
         functionValue += (self.beta - 1.0)*np.sum(np.log(thetamask))
+        if nograd:
+            return functionValue
         # functionValue += (self.beta - 1.0)*np.sum(np.log(thetamask/self.lengths[mask]))
         # functionValue -= (self.beta - 1.0)*np.log(np.sum(thetamask/self.lengths[mask]))
         # yxTtheta = self.ynnz[maskxtheta] / xthetamask
