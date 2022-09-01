@@ -6,6 +6,29 @@ from numba import jit
 from numpy.linalg import norm
 from numpy import maximum, sqrt
 
+
+def linesearch(x, grad, loss, loss_grad, a_init =1, eta =0.9):
+    """
+        x: starting point, numpy array in the simplex
+
+    Line search to find stepsize such that 
+    Determines a stepsize a such that f(x_new) > f(x)+grad^T(x_new -x) +(1/a)* KL(x_new, x)) 
+    to guarantee ascent
+    """
+    #Determine max possible stepsize
+    # q = lambda x_new, a:  loss + grad@(x_new -x) -(1/a)*x_new@np.log(x_new/x) + np.sum(x_new-x) 
+    a = a_init
+    q_val = loss
+    loss_new = loss
+    while loss_new <= q_val: 
+        # import pdb; pdb.set_trace()
+        a = a*eta
+        x_new = prod_exp_normalize(x, a*grad)
+        q_val = loss + grad@(x_new -x) -(1/a)*x_new@np.log(x_new/x)  #q(x_new,a)
+        loss_new, gnew =  loss_grad(x_new)
+    return x_new, a
+
+
 @jit(nopython=True)
 def prod_exp_normalize(x,y):
     """ Numerically stable implementation of exp_normalize function  """
@@ -35,6 +58,7 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     x_av = x_0.copy()
     momentum = 0.9
     loss0, grad0  = loss_grad(x_0, Hessinv)
+    loss = loss0
     grad = grad0.copy()
     normg0 = sqrt(grad0 @ grad0)
     norm_records = []
@@ -43,20 +67,26 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     iteration_counts =[]
     num_steps_between_snapshot = maximum(int(n_iters/15),1)
     num_steps_before_decrease =0
+    lrst= 2**(-1/2)/(norm(grad, np.inf) )
     for iter in range(n_iters):
-        if lrs is None:
-            if iter < num_steps_before_decrease:
-                lrst = 2**(-1/2)/(norm(grad, np.inf) )
-            elif Hessinv:
-                lrst = 1/(norm(grad, np.inf)*(iter+1-num_steps_before_decrease+continue_from)**2 )
-            else:
-                lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
-        elif lrs.shape == (1,):
-            lrst = lrs[0]
+        if lrs is "linesearch":
+            # lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1))
+            x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst*1.1)
+            print("lrst:  ", lrst)
         else:
-            lrst = lrs[iter]
-        # Update using prod exp function
-        x_new = prod_exp_normalize(x, lrst*grad)
+            if lrs is None:
+                if iter < num_steps_before_decrease:
+                    lrst = 2**(-1/2)/(norm(grad, np.inf) )
+                elif Hessinv:
+                    lrst = 1/(norm(grad, np.inf)*(iter+1-num_steps_before_decrease+continue_from)**2 )
+                else:
+                    lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
+            elif lrs.shape == (1,):
+                lrst = lrs[0]
+            else:
+                lrst = lrs[iter]
+            # Update using prod exp function
+            x_new = prod_exp_normalize(x, lrst*grad)
         # x_new = softmax(np.log(x) +lrst*grad)  # 
         if np.isnan(x_new.sum()):
             print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )

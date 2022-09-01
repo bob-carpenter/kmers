@@ -7,6 +7,29 @@ from numpy.linalg import norm
 from numpy import maximum, sqrt
 from exp_grad_solver import prod_exp_normalize, update_records
 
+
+def linesearch(x, d, gd, loss, loss_grad, a_init =1, tau =1.1):
+    """
+        x: starting point, numpy array in the simplex
+        d: search direction
+        gd:  grad^T d
+    Line search to find stepsize such that 
+    Determines a stepsize a such that f(x_new) < f(x)+ a grad^T d +a^2*M/2 ||x_new- x||^2 
+    to guarantee ascent
+    """
+    #Determine max possible stepsize
+    normdsqr = np.linalg.norm(d)**2
+    q = lambda a:  loss + a*gd +(M*a**2)/2 *normdsqr
+    a = a_init
+    q_val = loss
+    while loss <= q_val: 
+        M = M*tau
+        a = np.minimum(-gd/(M*normdsqr),1)
+        q_val = q(a)
+    return x+a*d, a
+
+
+
 def frank_wolfe_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False, continue_from = 0):
     """
     Frank Wolfe for minimizing
@@ -34,14 +57,15 @@ def frank_wolfe_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8
     active_set = np.zeros(x.shape, dtype=bool)
     active_set_non_empty = False
     for iter in range(n_iters):
-        if lrs is None:
+        if lrs is None or lrs == "linesearch":
             lrst = 2/(iter+3)
+        # elif lrs == "linesearch":
+        #     lrst
         elif lrs.shape == (1,):
             lrst = lrs[0]
         else:
             lrst = lrs[iter]
 
-        # import pdb; pdb.set_trace()
         imax = np.argmax(grad)  #FW direction
         test1 = True
         if active_set_non_empty: #away step

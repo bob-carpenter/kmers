@@ -28,9 +28,9 @@ else:
     model_class = msm.multinomial_simplex_model
 # solver = "experimental_lbfgs"
 # solver = "mirror_lbfgs"
-# solver = "exp_grad"
+solver = "exp_grad"
 # solver = "accel_mirror"
-solver = "frank_wolfe"
+# solver = "frank_wolfe"
 # filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
 # K = 15
 # N = 5000000
@@ -65,7 +65,7 @@ beta = 0.1
 model = model_class(X_FILE, Y_FILE, beta = beta, lengths=lengths, solver=solver) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(n_iters =1000, tol=1e-16, gtol=1e-16, Hessinv = False)
+dict_results= model.fit(n_iters =100, tol=1e-16, gtol=1e-16,  lrs = "linesearch", Hessinv = False) #lrs= "linesearch"
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 

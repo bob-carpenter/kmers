@@ -25,6 +25,8 @@
 \newcommand{\norm}[1]{ \left\| #1 \right\|}      % norm 
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\supp}{supp}
+\DeclareMathOperator*{\cone}{cone}
 %% Packages for shaded lemmas and theorems because Robert likes these
 \definecolor{shadecolor}{gray}{0.90}
 \declaretheoremstyle[
@@ -718,7 +720,7 @@ where $\beta>0$ and $\Gamma$ is the gamma function $\Gamma(z) : = \int_{0}^{\inf
 Consequently~\eqref{eq:posterior-const} is equivalent to solving
  \begin{align}
 \theta^* \; \in \; \arg \max_{\theta \in \Delta^G}   y^{\top} \cdot \log \left( X \cdot \theta \right)
-         +(\beta-1)\sum_{i=1}^G\log\theta_i =: f(\theta). \label{eq:posterior-const}
+         +(\beta-1)\sum_{i=1}^G\log\theta_i =: f(\theta). \label{eq:posterior-const2}
 \end{align} 
 
 % \begin{align}
@@ -729,13 +731,44 @@ Consequently~\eqref{eq:posterior-const} is equivalent to solving
 
 For the above function $f(\theta)$ we have that
 \begin{align}
-\nabla f(\theta) &= \sum_{j=1}^n \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \diag{\theta}^{-1} \ones\\
+\nabla f(\theta) &= \sum_{j=1}^{4^K} \frac{y_j x_j}{x_j^\top \theta} + (\beta-1 ) \diag{\theta}^{-1} \ones\\
 &= X^\top y \;\diag{X  \cdot\theta}^{-1}+ (\beta-1 ) \diag{\theta}^{-1} \ones
 \end{align}
-We can solve~\eqref{eq:posterior-const} iteratively using the Exponentiated Gradient Descent (EGA) method. At each iteration, EGA minimizes a linearization of the objective together with KL divergence, that is
+
+
+In the next lemma,  we prove that solving~\eqref{eq:posterior-const} is equivalent to a convex optimization problem.
+
+\begin{lemma}
+%Let $\supp(y) = \{i \; : \; y_i \neq 0 \}$ be the support of $y.$ For a set of vectors $\{v_1, \ldots, v_m \}$ let
+% $$\cone(v_1, \ldots, v_m) := \left\{ \sum_{i=1}^m v_i \alpha_i \; : \;  \alpha \geq 0\right\},$$
+% be the cone formed by these vectors.
+% If
+%\begin{equation}\label{eq:zeronocone}
+%0 \not\in \cone( x_i \; : \; y_i \neq 0),
+%\end{equation}
+If $y \neq 0$
+then solving~\eqref{eq:posterior-const2} for $\beta=1$ is equivalent to solving
+ \begin{align}
+\theta^* \; \in \; \arg \max_{\theta \in\bar{ \Delta}^G}   y^{\top} \cdot \log \left( X \cdot \theta \right)
+          \label{eq:posterior-const-conv},
+\end{align} 
+where   $$\bar{\Delta}^p:= \{  x \in \mathbb{R}^p \; : \; \sum_{j=1}^p x_j \leq 1, \mbox{ and }  x_i \geq 0, \quad \mbox{for } i=1,\ldots, p\}.$$
+Furthermore~\eqref{eq:posterior-const-conv} is a smooth and convex optimization problem.
+\end{lemma}
+ \begin{proof}
+To prove that the solution $\theta^*$ to~\eqref{eq:posterior-const-conv} is also a solution of~\eqref{eq:posterior-const2},  we need only show that $\theta^*$ will not be in the interior of $\bar{\Delta}^p$,  and thus instead will be on the boundary which is $\Delta^p.$ If $\theta^*$  was on the interior,  then the gradient of the objective function would be zero,  that is
+\begin{equation}\label{eq:temploz494}
+\nabla f(\theta^*) \; =\;  \sum_{j=1}^{4^K} \frac{y_j x_j}{x_j^\top \theta}  =  \sum_{j \in \supp(y)} \frac{y_j x_j}{x_j^\top \theta}  =0.
+\end{equation}
+Let $\alpha_j =  \frac{y_j}{x_j^\top \theta} \geq 0$. 
+%Thus~\eqref{eq:temploz494} states that $ \sum_{j \in \supp(y)}\alpha_j x_j =0$, which is equivalent to $0 \in  \cone( x_i \; : \; y_i \neq 0),$ which is not possible due to our assumption~\eqref{eq:zeronocone}.
+Since $x_i$ are positive vectors and $\alpha \geq 0, $ for $\sum_{j=1}^{4^K} \alpha _j x_j =0$ only if $\alpha=0.$ Since $y \neq 0$ we have that $\alpha \neq 0$ and thus~\eqref{eq:temploz494} is no possible.
+ \end{proof} 
+We can solve~\eqref{eq:posterior-const2} iteratively using the Exponentiated Gradient Descent (EGA) method. At each iteration, EGA minimizes a linearization of the objective together with KL divergence, that is
 \begin{align}\label{eq:EGA}
 \theta^{t+1} & = \argmin_{\theta} -f(\theta^t) - \nabla f(\theta^t)^\top(\theta -\theta^t) + \frac{1}{\gamma_t} KL(\theta,\theta^t),
 \end{align}
+\rob{Why not line search so that the model on the right is an upper bound on $f(\theta^{t+1})$? This would guarantee descent.  Search "exponentiated gradient descent mirror descent with backtracking line search."}
 where $\gamma_t >0$ is a step length and $ KL(p,q) = \sum_i p_i \log\left(\frac{p_i}{q_i} \right)- \sum_i(p_i-q_i)$. Fortunately~\eqref{eq:EGA} has a closed form solution given by
 \begin{align}\label{eq:EGAupdate}
 \theta^{t+1} &=  \frac{\theta^t_i \exp( \gamma_t  \nabla_{i}f(\theta^t) )}{\sum_{j=1}^G\theta^t_j \exp( \gamma_t  \nabla_{j}f(\theta^t) ) }.
