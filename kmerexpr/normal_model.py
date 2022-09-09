@@ -61,7 +61,7 @@ class normal_model:
         return self.x.shape[1]
 
 
-    def fit(self, theta0=None, tol=1e-10, n_iters = 10000):
+    def fit(self, model_parameters, theta0=None, tol=1e-10, n_iters = 10000):
 
         start = time.time()
         # x, istop, itn = lsqr(self.x, self.y/self.N, damp=self.beta, x0=x0)[:3]

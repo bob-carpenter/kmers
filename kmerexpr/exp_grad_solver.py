@@ -12,7 +12,7 @@ def linesearch(x, grad, loss, loss_grad, a_init =1, eta =0.9):
         x: starting point, numpy array in the simplex
 
     Line search to find stepsize such that 
-    Determines a stepsize a such that f(x_new) > f(x)+grad^T(x_new -x) +(1/a)* KL(x_new, x)) 
+    Determines a stepsize a such that f(x_new) > f(x)+grad^T(x_new -x) +(1/a)* KL(x_new, x) 
     to guarantee ascent
     """
     #Determine max possible stepsize
@@ -20,12 +20,19 @@ def linesearch(x, grad, loss, loss_grad, a_init =1, eta =0.9):
     a = a_init
     q_val = loss
     loss_new = loss
+    x_new = x
+    count =0
+    mask = x > 0
     while loss_new <= q_val: 
-        # import pdb; pdb.set_trace()
+        count+=1
         a = a*eta
         x_new = prod_exp_normalize(x, a*grad)
-        q_val = loss + grad@(x_new -x) -(1/a)*x_new@np.log(x_new/x)  #q(x_new,a)
-        loss_new, gnew =  loss_grad(x_new)
+        q_val = loss + grad@(x_new -x) -(1/a)*x_new[mask]@np.log(x_new[mask]/x[mask])  #q(x_new,a)
+        loss_new =  loss_grad(x_new, nograd = True)
+        if np.isnan(loss_new): # back up more
+            # print("NaN found at iteration ", count)
+            loss_new = loss
+            a = a*eta**2
     return x_new, a
 
 
@@ -43,7 +50,7 @@ def update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,
     loss_records.append(loss)
     iteration_counts.append(iter)
 
-def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False, continue_from = 0):
+def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False):
     """
     Exponentiated Gradient Descent for minimizing
     max l(x)  s.t. sum(x) = 1 and x>0
@@ -66,21 +73,20 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     xs = []
     iteration_counts =[]
     num_steps_between_snapshot = maximum(int(n_iters/15),1)
-    num_steps_before_decrease =0
     lrst= 2**(-1/2)/(norm(grad, np.inf) )
     for iter in range(n_iters):
-        if lrs is "linesearch":
-            # lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1))
-            x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst*1.1)
-            print("lrst:  ", lrst)
+        if type(lrs) == str:
+            if lrs == "lin-decrease":
+                lrst = (2)*2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1))
+            else:   #use previous lrst to warmstart #"lin-warmstart"
+                lrst = 1.2*lrst
+            x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst)
         else:
             if lrs is None:
-                if iter < num_steps_before_decrease:
-                    lrst = 2**(-1/2)/(norm(grad, np.inf) )
-                elif Hessinv:
-                    lrst = 1/(norm(grad, np.inf)*(iter+1-num_steps_before_decrease+continue_from)**2 )
+                if Hessinv:
+                    lrst = 1/(norm(grad, np.inf)*(iter+1)**2 )
                 else:
-                    lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1-num_steps_before_decrease+continue_from) )
+                    lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1) )
             elif lrs.shape == (1,):
                 lrst = lrs[0]
             else:
@@ -92,7 +98,6 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
             print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )
             break
         x_av = momentum*x_av +(1-momentum)*x_new
-
         loss, grad_new  = loss_grad(x_new, Hessinv = Hessinv)
         
         # Checking if method is stopping

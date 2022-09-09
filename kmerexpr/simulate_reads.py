@@ -1,9 +1,8 @@
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
-from utils import get_path_names
 from utils import save_simulation_parameters, save_lengths
 from os import path
-
+np.random.seed(42)
 
 def length_adjustment(psi, lengths):
     theta = psi*lengths
@@ -15,7 +14,7 @@ def length_adjustment_inverse(theta, lengths):
     psi = psi/psi.sum()
     return psi
 
-def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
+def simulate_reads(problem,  force_repeat = True):  #
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
     then samples the reads from this subsampled data.
@@ -27,12 +26,14 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     N = number of reads, must be greater than number of isoforms in ISO_FILE
     alpha = parameter of Dirchlet distribution that generates psi
     """
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K=1, alpha=alpha) # dont worry about this K=1. It only affects the Y_FILE, which is not used here
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed
         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
         return READS_FILE
     isoforms = []
     lengths_list = []
+    L = problem.L
+    N = problem.N
     with open(ISO_FILE, "r") as f:
         parser = fastaparser.Reader(f, parse_method="quick")
         pos = 0
@@ -49,7 +50,7 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
-    alphas = alpha*np.ones(T)
+    alphas = problem.alpha*np.ones(T)
     psi= np.random.dirichlet(alphas)
     lengths = np.asarray(lengths_list)
     theta_true= length_adjustment(psi, lengths)
@@ -59,8 +60,8 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
     bins = np.bincount(iso_sampled, minlength=T)
     theta_sampled = bins/N
-    save_simulation_parameters(filename, N, L, alpha, psi, theta_true, theta_sampled)
-    save_lengths(filename, N, L, lengths)
+    save_simulation_parameters(problem, psi, theta_true, theta_sampled)
+    save_lengths(problem.filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
         for n in range(N): 
             if (n + 1) % 100000 == 0:

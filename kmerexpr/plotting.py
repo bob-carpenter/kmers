@@ -1,14 +1,9 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+from utils import get_errors
 
 
-def get_plot_title(filename,model_type,N,L,K, solver=False):
-    if solver:
-        return  filename+'-'+model_type + "-" + solver+ "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
-    else:
-        return  filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) 
-        
 def plot_scatter(title,xaxis,yaxis, horizontal = False):
     plt.scatter(xaxis,yaxis , s=5, alpha=0.4 )  #theta_opt
     if horizontal:
@@ -42,7 +37,6 @@ def plot_general(result_dict, title, save_path, threshold=False, yaxislabel=r"$ 
         result = result_dict[algo_name] # result is a 2-d list with different length
         len_cut = len(min(result, key=len))# cut it with min_len and convert it to numpy array for plot
         result = np.array(list(map(lambda arr: arr[:len_cut], result)))
-        # plot
         val_avg = np.mean(result, axis=0)
         if threshold:
             len_cut = (
@@ -68,7 +62,7 @@ def plot_general(result_dict, title, save_path, threshold=False, yaxislabel=r"$ 
             plt.plot(xticks_p, val_avg, marker, markevery=markevery, markersize=12, label=algo_name, lw=3, color=color)
         else:
             plt.semilogy(xticks_p, val_avg, marker, markevery=markevery, markersize=12, label=algo_name, lw=3, color=color)
-        plt.fill_between(xticks_p, val_min, val_max, alpha=0.2, color=color)
+        # plt.fill_between(xticks_p, val_min, val_max, alpha=0.2, color=color)
 
         newmincand = np.min(val_min)
         if miny > newmincand:
@@ -98,15 +92,22 @@ def plot_iter(result_dict, problem, title, save_path, threshold=False, tol=False
         yaxislabel=yaxislabel,
         fontsize=fontsize,
     )
-
+    
 def plot_error_vs_iterations(dict_results, theta_true, title, model_type):
     errors_list = []
-    errors =[]
-    for x in dict_results['xs']:
-        errors.append(np.linalg.norm(x - theta_true, ord =1))
-    errors_list.append(errors)
     dict_plot = {}
-    # dict_plot[model_type+"-sampled"] = errors_sam_list
+    errors= get_errors(dict_results['xs'], theta_true)
+    errors_list.append(errors)
+    dict_plot[model_type] = errors_list
+    plot_general(dict_plot, title=title , save_path="./figures", 
+                yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")
+    plt.close()
+
+def plot_dictionary_errors(dict_results, theta_true, title, model_type):
+    errors_list = []
+    dict_plot = {}
+    errors= get_errors(dict_results['xs'], theta_true)
+    errors_list.append(errors)
     dict_plot[model_type] = errors_list
     plot_general(dict_plot, title=title , save_path="./figures", 
                 yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")

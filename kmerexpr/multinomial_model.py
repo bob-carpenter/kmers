@@ -67,7 +67,7 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver = 'lbfgs'): 
+    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver_name = 'lbfgs'): 
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -90,7 +90,7 @@ class multinomial_model:
         self.M = x_dim[0]
         self.T = x_dim[1] 
         self.beta =beta
-        self.solver = solver
+        self.solver_name = solver_name
         # dimension checking
         assert len(x_dim) == 2
         x_rows = x_dim[0]
@@ -151,7 +151,7 @@ class multinomial_model:
         return functionValue, gradient
 
 
-    def fit(self, theta0=None, factr=1.0, gtol=1e-12, n_iters = 50000):
+    def fit(self, model_parameters, theta0=None, factr=1.0, gtol=1e-12, tol=None, n_iters = 50000):
 
         if theta0 is None:  #initialize to normal 0 1
             theta0 = np.random.normal(0, 1, self.T) 
