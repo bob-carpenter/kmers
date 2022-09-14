@@ -16,7 +16,6 @@ class Problem:
     N: int         # number of reads
     K: int = 15    # length of kmers
     L: int = 100   # length of reads
-    p: float = 1.0 # proportion of isoforms used
     alpha: float = 0.1  # parameter of Dirchlet distribution prior for simulating reads
 
     def get_path_names(self):
@@ -141,12 +140,9 @@ def save_run_result(problem, model_parameters,  dict):
 
 def load_run_result(problem, model_parameters):
     exp_dir = get_exp_dir(problem, model_parameters)
-    try:
-        a_file = open(exp_dir, "rb")
-        dict = pickle.load(a_file)
-        a_file.close()
-    except:
-        dict= None
+    a_file = open(exp_dir, "rb")
+    dict = pickle.load(a_file)
+    a_file.close()
     return dict
 
 def get_errors(xs, theta_true):

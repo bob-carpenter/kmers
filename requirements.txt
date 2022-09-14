@@ -10,3 +10,7 @@ protobuf==3.19.1
 pytest==6.2.5
 # BSD
 scipy==1.7.3
+# NUMBA
+numba==0.56.2
+# MATPLOTLIB
+matplotlib==3.5.3

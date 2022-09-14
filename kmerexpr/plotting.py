@@ -103,12 +103,12 @@ def plot_error_vs_iterations(dict_results, theta_true, title, model_type):
                 yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")
     plt.close()
 
-def plot_dictionary_errors(dict_results, theta_true, title, model_type):
-    errors_list = []
-    dict_plot = {}
-    errors= get_errors(dict_results['xs'], theta_true)
-    errors_list.append(errors)
-    dict_plot[model_type] = errors_list
-    plot_general(dict_plot, title=title , save_path="./figures", 
-                yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")
-    plt.close()
+# def plot_dictionary_errors(dict_results, theta_true, title, model_type):
+#     errors_list = []
+#     dict_plot = {}
+#     errors= get_errors(dict_results['xs'], theta_true)
+#     errors_list.append(errors)
+#     dict_plot[model_type] = errors_list
+#     plot_general(dict_plot, title=title , save_path="./figures", 
+#                 yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")
+#     plt.close()

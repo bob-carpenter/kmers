@@ -21,7 +21,7 @@ L = 10  # length of read
 model_type = "simplex"
 solver_name = "exp_grad"
 lrs = None #"lin-warmstart"
-filename= "test5.fsa"  # "GRCh38_latest_rna.fna" 
+filename= "test5.fsa"  # "GRCh38_latest_rna.fna"   "sampled_genome_"+str(0.1)
 ## Generate data, with ground truth theta
 K = 3  # K-mer length
 n_repeat = 1
@@ -42,6 +42,6 @@ for i in range(n_repeat):
 # os.remove(X_FILE)   ## Keeping the file for reproducibility
 dict_plot = {}
 dict_plot[model_type] = errors_total
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 plot_general(dict_plot, title="test"+filename + "-L-" + str(L) + "-reads", save_path="./figures", yaxislabel=r"$\|\theta -\theta^* \|$", xaxislabel="Num. Reads", xticks = Ns)
 

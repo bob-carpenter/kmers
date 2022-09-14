@@ -6,8 +6,7 @@ from numba import jit
 from numpy.linalg import norm
 from numpy import maximum, sqrt
 
-
-def linesearch(x, grad, loss, loss_grad, a_init =1, eta =0.9):
+def linesearch(x, grad, loss, loss_grad, a_init: float = 1.0, eta: float  =0.9, max_iter: int = 20):
     """
         x: starting point, numpy array in the simplex
 
@@ -21,20 +20,20 @@ def linesearch(x, grad, loss, loss_grad, a_init =1, eta =0.9):
     q_val = loss
     loss_new = loss
     x_new = x
-    count =0
     mask = x > 0
-    while loss_new <= q_val: 
-        count+=1
+    for count in range(max_iter):
+        if loss_new > q_val: 
+            break
         a = a*eta
         x_new = prod_exp_normalize(x, a*grad)
         q_val = loss + grad@(x_new -x) -(1/a)*x_new[mask]@np.log(x_new[mask]/x[mask])  #q(x_new,a)
         loss_new =  loss_grad(x_new, nograd = True)
         if np.isnan(loss_new): # back up more
-            # print("NaN found at iteration ", count)
             loss_new = loss
             a = a*eta**2
+    if loss_new <= q_val: 
+        print("LINESEARCH FAILED! Caution")
     return x_new, a
-
 
 @jit(nopython=True)
 def prod_exp_normalize(x,y):
@@ -76,7 +75,7 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     lrst= 2**(-1/2)/(norm(grad, np.inf) )
     for iter in range(n_iters):
         if type(lrs) == str:
-            if lrs == "lin-decrease":
+            if lrs == "decrease":
                 lrst = (2)*2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1))
             else:   #use previous lrst to warmstart #"lin-warmstart"
                 lrst = 1.2*lrst

@@ -149,7 +149,7 @@ class multinomial_simplex_model:
         theta0 = theta0/theta0.sum()
         return theta0       
 
-    def fit(self, model_parameters, theta0=None, tol=1e-18, gtol=1e-18, n_iters = 100,   Hessinv = False):
+    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters = 100,   Hessinv = False):
 
         if theta0 is None:  #initialize to uniform
             if model_parameters.init_iterates == "lsq":
@@ -160,7 +160,14 @@ class multinomial_simplex_model:
                 theta0 = self.initialize_iterates_uniform()
  
         if self.solver_name=="frank_wolfe":
-            dict_sol = frank_wolfe_solver(self.logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
+            def logp_grad(theta, nograd = False):
+                if nograd:
+                    return -self.logp_grad(theta, nograd = nograd)
+                else:
+                    f, g = self.logp_grad(theta)
+                    return (-f, -g)
+            theta0 = 0.5*theta0   #Start in interior of simplex
+            dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M)
         elif self.solver_name=="exp_grad":
             dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
         else:

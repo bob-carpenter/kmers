@@ -15,9 +15,9 @@ import random
 import time
 import scipy
 random.seed(42) 
-# lrs = "lin-decrease"
-lrs = "lin-warmstart"
-# lrs = None
+# lrs = "decrease"
+# lrs = "warmstart"
+lrs = None
 # beta = 0.1
 # beta = 1.0  # Which means no regularization
 solver = "exp_grad"
@@ -27,10 +27,9 @@ model_parameters = Model_Parameters(model_type = "simplex", solver_name = solver
 # model_parameters = Model_Parameters(model_type = "softmax")
 # model_parameters = Model_Parameters(model_type = "normal")
 
-problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =5000000, L=100)
+# problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =10000000, L=100)
 # problem = Problem(filename="sampled_genome_"+str(0.1), K=15, N =5000000, L=100, p=0.1, alpha=0.1)  #p=0.1
-# problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=0.1)
-
+problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=0.1)
 force_repeat = False
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
 tic = time.perf_counter()
@@ -47,7 +46,7 @@ lengths = load_lengths(problem.filename, problem.N, problem.L)
 model = model_parameters.initialize_model(X_FILE, Y_FILE,  lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(model_parameters, n_iters =400, tol=1e-20, gtol=1e-20) 
+dict_results= model.fit(model_parameters, n_iters =1000) 
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
