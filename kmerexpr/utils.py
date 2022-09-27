@@ -23,17 +23,10 @@ class Problem:
         READS_FILE = prefix + "READS-" + surfix + ".fna"
         X_FILE = prefix + "X-" + surfix + "-" + str(self.K) + "_csr.npz"
         Y_FILE = prefix + "Y-" + surfix + "-" + str(self.K)
-        if self.alpha is None:
-            Y_FILE = Y_FILE + ".npy"
-            READS_FILE =  READS_FILE + ".fna"
-        else:
-            Y_FILE = Y_FILE +"-a-" +str(self.alpha) + ".npy"
-            READS_FILE =  READS_FILE +"-a-" +str(self.alpha) + ".fna"
+        Y_FILE = Y_FILE +"-a-" +str(self.alpha) + ".npy"
+        READS_FILE =  READS_FILE +"-a-" +str(self.alpha) + ".fna"
         return ISO_FILE, READS_FILE, X_FILE, Y_FILE
         
-    # def __post_init_(self):
-    #     ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
-
 @dataclass
 class Model_Parameters:
     model_type: str
@@ -41,6 +34,7 @@ class Model_Parameters:
     beta: float = 1.0  # parameter for prior over theta
     lrs: Any = None    # options for line search 
     init_iterates: str = "uniform" #options for initialize iterates
+    joker: Any = False
     # n_iters: int =2000
     # tol: float=1e-20 
     # gtol: float=1e-20
@@ -95,7 +89,7 @@ def load_lengths(filename, N, L):
 
 def get_simulation_dir(problem):
     ISO_FILE, prefix, surfix = get_path_prefix_surfix(problem.filename, problem.N, problem.L)
-    sim_id = hash_dict(asdict(problem))
+    sim_id = hash_dict({"filename" : problem.filename, "N" :problem.N, "L" : problem.L, "alpha" : problem.alpha})
     sim_dir = os.path.join(prefix, "simulations/")
     if not os.path.exists(sim_dir):
         os.makedirs(sim_dir)

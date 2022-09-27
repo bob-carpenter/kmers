@@ -167,7 +167,7 @@ class multinomial_simplex_model:
                     f, g = self.logp_grad(theta)
                     return (-f, -g)
             theta0 = 0.5*theta0   #Start in interior of simplex
-            dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M)
+            dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, away_step = model_parameters.joker)
         elif self.solver_name=="exp_grad":
             dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
         else:

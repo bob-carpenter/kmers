@@ -2,7 +2,7 @@
 Todo:
 1. Write tests for new code (fw, linesearch?)
 2. Use line search with frank-wolfe as well
-3. Generate a dashboard of plots, with number of reads on x-axis and MSE on y axis, with on curve for each possible k-mer count. Also different plots for alpha that simulates the data.
+3. Generate a dashboard of plots, with number of reads on x-axis and MSE on y axis, with one curve for each possible k-mer count. Also different plots for alpha that simulates the data. This gives only a row of plots.
 4. Plot comparison of convergence pf EG and FW with and without line search. The compare scatter plots of best two, and scatter plot of softmax+LBFGS
 
 Clean-ups:

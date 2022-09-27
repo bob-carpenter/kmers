@@ -6,7 +6,7 @@ from numba import jit
 from numpy.linalg import norm
 from numpy import maximum, sqrt
 
-def linesearch(x, grad, loss, loss_grad, a_init: float = 1.0, eta: float  =0.9, max_iter: int = 20):
+def linesearch(x, grad, loss, loss_grad, a_init: float = 1.0, eta: float  =0.9, max_iter: int = 20, armijo = False):
     """
         x: starting point, numpy array in the simplex
 
@@ -26,7 +26,10 @@ def linesearch(x, grad, loss, loss_grad, a_init: float = 1.0, eta: float  =0.9, 
             break
         a = a*eta
         x_new = prod_exp_normalize(x, a*grad)
-        q_val = loss + grad@(x_new -x) -(1/a)*x_new[mask]@np.log(x_new[mask]/x[mask])  #q(x_new,a)
+        if armijo:
+            q_val = loss + eta*grad@(x_new -x)
+        else:
+            q_val = loss + grad@(x_new -x) -(1/a)*x_new[mask]@np.log(x_new[mask]/x[mask])  #q(x_new,a)
         loss_new =  loss_grad(x_new, nograd = True)
         if np.isnan(loss_new): # back up more
             loss_new = loss
@@ -75,11 +78,12 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     lrst= 2**(-1/2)/(norm(grad, np.inf) )
     for iter in range(n_iters):
         if type(lrs) == str:
-            if lrs == "decrease":
-                lrst = (2)*2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1))
+            lrst = 1.2*lrst
+            if lrs == "armijo":
+                armijo = True
             else:   #use previous lrst to warmstart #"lin-warmstart"
-                lrst = 1.2*lrst
-            x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst)
+                armijo = False
+            x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst, armijo =armijo)
         else:
             if lrs is None:
                 if Hessinv:

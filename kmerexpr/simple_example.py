@@ -15,7 +15,7 @@ import time
 import scipy
 random.seed(42) 
 
-model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs="lin-warmstart")
+model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs="warmstart")
 problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
 
 alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True

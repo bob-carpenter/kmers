@@ -1,6 +1,6 @@
 import numpy as np  # BSD-3
 import fastaparser  # GPLv3
-from utils import save_simulation_parameters, save_lengths
+from utils import save_simulation_parameters, save_lengths, get_simulation_dir
 from os import path
 np.random.seed(42)
 
@@ -27,9 +27,14 @@ def simulate_reads(problem,  force_repeat = True):  #
     alpha = parameter of Dirchlet distribution that generates psi
     """
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
-    if path.exists(READS_FILE) and force_repeat == False: # don't repeat if not needed
-        print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
+    if path.exists(get_simulation_dir(problem)) and path.exists(READS_FILE) and force_repeat is False:
         return READS_FILE
+    # if path.exists(get_simulation_dir(problem)) and force_repeat is False:
+    #     print("Simulation results for ", problem ," already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
+    # elif path.exists(get_simulation_dir(problem)) is True:
+    #     if path.exists(READS_FILE) and force_repeat is False: # don't repeat if not needed
+    #         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
+    #         return READS_FILE
     isoforms = []
     lengths_list = []
     L = problem.L
