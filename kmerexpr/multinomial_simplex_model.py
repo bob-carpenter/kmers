@@ -1,23 +1,3 @@
-# Sample code automatically generated on 2021-12-11 17:57:52
-# by www.matrixcalculus.org from input:
-#     d/dtheta y' * log(x * exp(theta) / sum(exp(theta))) - 1/18 * theta' * theta
-#       = 1 / sum(exp(theta))
-#         * (x' * (y ./ (1 / sum(exp(theta)) * x * exp(theta))))
-#         .* exp(theta)
-#       - 1 / sum(exp(theta)).^2
-#         * exp(theta)' * x'
-#         * (y ./ (1 / sum(exp(theta)) * x * exp(theta)))
-#         * exp(theta)
-#       - 2/18 * theta
-# where
-#     theta is a vector
-#     x is a matrix
-#     y is a vector
-# The generated code is provided "as is" without warranty of any kind.
-
-# The code here refactors the auto-generated code into a class and
-# pulls the testing out.
-
 import numpy as np
 from scipy.sparse import load_npz
 from scipy.sparse.linalg import lsqr
@@ -168,17 +148,8 @@ class multinomial_simplex_model:
                     return (-f, -g)
             theta0 = 0.5*theta0   #Start in interior of simplex
             dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, away_step = model_parameters.joker)
-        elif self.solver_name=="exp_grad":
+        else: 
+            self.solver_name=="exp_grad"
             dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
-        else:
-            xs=[]
-            func = lambda theta: -self.logp_grad(theta)[0]
-            fprime = lambda theta: -self.logp_grad(theta)[1]
-            rounds = int(np.floor(n_iters/100))
-            for i in range(rounds):
-                theta_sol, f_sol, dict_flags_convergence = optimize.fmin_l_bfgs_b(func, theta0, fprime, pgtol = gtol, factr = 1.0, maxiter=n_iters, maxfun = 200)
-                theta_sol = softmax(theta_sol)
-                xs.append(theta_sol)
-            dict_sol = {'x' : softmax(theta_sol), 'xs' : xs, 'loss_records' : -f_sol, 'iteration_counts' : dict_flags_convergence['nit'], 'grad' : -dict_flags_convergence["grad"]}  
             
         return dict_sol

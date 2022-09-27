@@ -13,7 +13,7 @@ import hashlib
 @dataclass(frozen=True)
 class Problem:
     filename: str
-    N: int         # number of reads
+    N: int = 1000  # number of reads
     K: int = 15    # length of kmers
     L: int = 100   # length of reads
     alpha: float = 0.1  # parameter of Dirchlet distribution prior for simulating reads
@@ -40,6 +40,11 @@ class Model_Parameters:
     # gtol: float=1e-20
     # Hessinv = False
 
+    def __post_init__(self):
+        if self.solver_name != "frank_wolfe" and self.solver_name != "exp_grad":
+            print("No solver called", self.solver_name, ". Defaulting to exp_grad" )
+            self.solver_name ="exp_grad"
+        
     def initialize_model(self, X_FILE, Y_FILE,  lengths):
         if(self.model_type == "softmax"):
             model_class = mm.multinomial_model
