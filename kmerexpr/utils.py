@@ -57,7 +57,7 @@ class Model_Parameters:
 
 def get_plot_title(problem, model_parameters):
     title =  problem.filename+'-'+ model_parameters.model_type  + "-N-" + str(problem.N) \
-            + "-L-" + str(problem.L) + "-K-"+str(problem.K) +"-init-" +model_parameters.init_iterates
+            + "-L-" + str(problem.L) + "-K-"+str(problem.K) +"-init-" +model_parameters.init_iterates + "-a-" +str(problem.alpha)
     if model_parameters.solver_name != "empty":
         title =  title + "-" + model_parameters.solver_name
     if model_parameters.lrs != None:

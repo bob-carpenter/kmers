@@ -72,12 +72,14 @@ def run_model(problem, model_parameters, n_iters = 5000,   force_repeat = False)
 
 if __name__ == '__main__': 
     random.seed(42) 
-    # model_parameters = Model_Parameters(model_type = "softmax", solver_name = "lbfgs",  lrs = "lin-warmstart", init_iterates ="uniform")
-    model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs = "armijo", init_iterates ="uniform")
+    # model_parameters = Model_Parameters(model_type = "softmax", solver_name = "lbfgs",  lrs = "warmstart", init_iterates ="uniform")
+    model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs = "warmstart")
     # model_parameters = Model_Parameters(model_type = "simplex", solver_name = "frank_wolfe", lrs = "warmstart", init_iterates ="uniform")
-    # problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =50000000, L=200, alpha =0.1) #N =5000000, 10000000, 20000000, 50000000
-    # problem = Problem(filename="sampled_genome_"+str(0.1), K=15, N =5000000, L=100,  alpha=0.1)  # alpha=0.1, 0.5
-    problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=10)
+    problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =50000000, L=100, alpha =0.1) #N =5000000, 10000000, 20000000, 50000000
+    # problem = Problem(filename="sampled_genome_"+str(0.01), K=15, N =5000000, L=100,  alpha=0.1)  # alpha=0.1, 0.5
+    # problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=10)
+    # problem = Problem(filename="GRCh38_latest_rna.fna", K=14, N=50000000, L=100, alpha = 0.1) 
+
     force_repeat = False
     print("experiment (N, L, K) = (",str(problem.N),", ",str(problem.L), ", ",str(problem.K), ")" )
     tic = time.perf_counter()
@@ -85,8 +87,12 @@ if __name__ == '__main__':
 
     toc = time.perf_counter()
     print(f"Created reads in {toc - tic:0.4f} seconds")
-
-    dict_results = run_model(problem, model_parameters, n_iters = 400, force_repeat = force_repeat) 
+    try:
+        dict_results = load_run_result(problem, model_parameters)
+    except:
+        dict_results= run_model(problem, model_parameters, n_iters = 400)
+        save_run_result(problem, model_parameters, dict_results)
+    # dict_results = run_model(problem, model_parameters, n_iters = 400, force_repeat = force_repeat) 
     save_run_result(problem, model_parameters, dict_results) # saving latest solution
     dict_results = load_run_result(problem, model_parameters)
     dict_simulation = load_simulation_parameters(problem)

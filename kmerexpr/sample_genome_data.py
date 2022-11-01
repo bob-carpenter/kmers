@@ -28,7 +28,6 @@ def sample_genome_data(filename, sampled_file, p):  #
     print("isoforms found = ", T)
     sample_size = int(np.ceil(p*T))
     y_sampled = np.random.choice(T, size=sample_size, replace=False)
-    import pdb; pdb.set_trace
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
     with open(SAMPLE_FILE_PATH, "w") as out:
         for n in range(sample_size): #range(T): Rob: Used to be number of isoforms, but that's incorrect? We are writing the reads file, which has N rows
@@ -40,3 +39,12 @@ def sample_genome_data(filename, sampled_file, p):  #
             out.write("\n")
             # print("sampled isoform num ", y_sampled[n], " is ",  seq)
     return SAMPLE_FILE_PATH
+
+if __name__ == '__main__': 
+    p = 0.01
+    filename = "../data/GRCh38_latest_rna.fna"
+    sampled_file = "sampled_genome" + "_" + str(p)
+    sample_genome_data(filename, sampled_file, p)
+
+
+

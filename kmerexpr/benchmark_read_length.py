@@ -9,7 +9,7 @@ from utils import  Problem, Model_Parameters, save_run_result
 from utils import load_simulation_parameters, load_lengths
 from plotting import plot_general, plot_general_test
 import random
-from run_single import run_model
+from run_single import run_model, plot_errors_and_scatter
 from utils import get_errors, load_run_result
 import os
 
@@ -19,7 +19,7 @@ random.seed(42) # Fixing the seed
 # Ks = [ 3, 6, 8]
 Ns = [1000000, 5000000, 10000000, 50000000]
 Ls = [100, 200, 300]
-Ks = [8, 12, 14]
+Ks = [8, 12, 15]
 alphas = [0.01, 0.1, 1., 10.0]
 model_type = "simplex"
 solver_name = "exp_grad"
@@ -55,6 +55,7 @@ for Lcount, L in enumerate(Ls):
                 RMSE = np.sqrt(np.linalg.norm(dict_simulation['psi'] - psi_opt)/np.sqrt(psi_opt.shape))
                 error_reads.append(RMSE)
                 save_run_result(problem, model_parameters, dict_results) 
+                plot_errors_and_scatter(problem, model_parameters)
             errors_total.append(error_reads)
             error_reads = []
             # os.remove(X_FILE)   ## Keeping the file for reproducibility
@@ -64,7 +65,7 @@ for Lcount, L in enumerate(Ls):
             axs[Lcount,alphacount].set_title(r"$\alpha$ =" + str(alpha), fontsize=20)
         # axs[Lcount,alphacount].set_title("L = " + str(L) +  r", $\alpha$ =" + str(alpha), fontsize=20)
         plot_general(dict_plot, title="benchmark_read_length_"+filename + "-L-" + str(L) + "-reads-"+ str(alpha) +"-alpha", \
-             save_path="./figures", yaxislabel="L = " + str(L), xaxislabel="Num. Reads", xticks = Ns)  #r"$\|\psi -\psi^* \|/T$"
+             save_path="./figures", yaxislabel="L = " + str(L), xaxislabel="N. Reads", xticks = Ns)  #r"$\|\psi -\psi^* \|/T$"
         plt.close()
 
 yminabs = 100000
@@ -78,7 +79,6 @@ for ax in axs.flat:
     ax.label_outer()
     legend = ax.legend()
     legend.remove()
-import pdb; pdb.set_trace()
 plt.setp(ax,  ylim=(yminabs, ymaxabs))
 
 handles, labels = axs[len(Ls)-1,len(alphas)-1].get_legend_handles_labels()
