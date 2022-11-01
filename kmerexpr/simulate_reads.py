@@ -37,22 +37,29 @@ def simulate_reads(filename, N, L,  alpha = 1, force_repeat = True):  #
         parser = fastaparser.Reader(f, parse_method="quick")
         pos = 0
         for s in parser:
+            print("s: ",s)
             if "PREDICTED" in s.header:
                 continue
             seq = s.sequence
+            print("seq: ",seq)
             if len(seq) < L:
                 continue
             if pos % 100000 == 0:
                 print("sim seqs read = ", pos)
             isoforms.append(seq)
+            print("seq len: ",len(seq))
             lengths_list.append(len(seq)-L+1)
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
     alphas = alpha*np.ones(T)
     psi= np.random.dirichlet(alphas)
+    print("length list: ",lengths_list)
     lengths = np.asarray(lengths_list)
+    print("adj ",lengths)
+    print("psi ",psi)
     theta_true= length_adjustment(psi, lengths)
+    print("theta true: ",theta_true)
     print("theta[0:10] =", theta_true[0:10])
     print("theta[K-10:K] =", theta_true[T - 10 : T])
     iso_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)

@@ -12,10 +12,12 @@ def linesearch_simplex(x,d,func):
     return x+a*d
 def get_path_prefix_surfix(name, N, L):
     HERE = os.path.dirname(os.path.abspath(__file__))
+    print(HERE)
     ROOT = os.path.dirname(HERE)
     DATA_PATH = os.path.join(HERE, "..", "data")
     ISO_FILE = os.path.join(DATA_PATH,  name )
     name_split = name.split(".", 1)
+    print(name_split)
     name_no_surfix = name_split[0]
     prefix = os.path.join(DATA_PATH, "model/")
     surfix = name_no_surfix + "-" + str(N) + "-" + str(L) 
@@ -46,6 +48,8 @@ def load_lengths(filename, N, L):
 
 def save_simulation_parameters(filename, N, L, alpha,  psi=None, theta_true=None, theta_sampled=None):
     ISO_FILE, prefix, surfix = get_path_prefix_surfix(filename, N, L)
+    print("pre ",prefix)
+    print("surf ",surfix)
     DICT_FILE = prefix + "SIM_PARAMETERS" + surfix + str(alpha)
     dict = {}
     dict['alpha'] = alpha
