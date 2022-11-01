@@ -90,4 +90,5 @@ if __name__ == '__main__':
     alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     READS_FILE = simulate_reads(problem)
+    print("generated: ", READS_FILE)
     
