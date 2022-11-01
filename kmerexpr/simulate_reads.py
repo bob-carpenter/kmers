@@ -18,13 +18,13 @@ def simulate_reads(problem,  force_repeat = True):  #
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
     then samples the reads from this subsampled data.
-    filename:  a string that will be the surfix of generated data where
+    problem.filename: returns a string that will be the surfix of generated data where
                 "read"+filename will be reads data
                 "x"+filename the transciptome matrix
                 "theta"+filename the ground truth theta used to generate the data
-    L = length of read
-    N = number of reads, must be greater than number of isoforms in ISO_FILE
-    alpha = parameter of Dirchlet distribution that generates psi
+    problem.L = length of read
+    problem.N = number of reads, must be greater than number of isoforms in ISO_FILE
+    problem.alpha = parameter of Dirchlet distribution that generates psi
     """
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     if path.exists(get_simulation_dir(problem)) and path.exists(READS_FILE) and force_repeat is False:
@@ -36,6 +36,7 @@ def simulate_reads(problem,  force_repeat = True):  #
     #         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
     #         return READS_FILE
     isoforms = []
+    isoforms_header = []
     lengths_list = []
     L = problem.L
     N = problem.N
@@ -53,7 +54,7 @@ def simulate_reads(problem,  force_repeat = True):  #
             if pos % 100000 == 0:
                 print("sim seqs read = ", pos)
             isoforms.append(seq)
-            print("seq len: ",len(seq))
+            isoforms_header.append(s.header)
             lengths_list.append(len(seq)-L+1)
             pos += 1
     T = len(isoforms)
@@ -81,8 +82,19 @@ def simulate_reads(problem,  force_repeat = True):  #
             seq = isoforms[iso_sampled[n]]
             start = np.random.choice(len(seq) - L + 1)
             out.write(">sim-")
-            out.write(str(n))
+            out.write(str(n)+"/"+isoforms_header[iso_sampled[n]][1:])
             out.write("\n")
             out.write(seq[start : start + L])
             out.write("\n")
     return READS_FILE
+
+
+if __name__ == '__main__': 
+
+    from utils import Problem
+    problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
+    alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
+    READS_FILE = simulate_reads(problem)
+    print("generated: ", READS_FILE)
+    

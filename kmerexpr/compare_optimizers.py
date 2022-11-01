@@ -6,7 +6,7 @@ from utils import  Problem, Model_Parameters, save_run_result
 from utils import load_simulation_parameters
 from plotting import plot_general
 import random
-from run_single import run_model
+from run_single import run_model, plot_errors_and_scatter
 from utils import get_errors, load_run_result
 
 
@@ -24,10 +24,10 @@ solver_names = ["exp_grad", "frank_wolfe"]
 # solver = "lbfgs"
 
 lrs_list = [None, "warmstart", "armijo"]
-alpha =0.1 # 0.1, 0.5
-problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =50000000, L=200, alpha = alpha) #N =5000000, 10000000, 20000000, 50000000
-# problem = Problem(filename="sampled_genome_"+str(0.1), K=15, N =5000000, L=100,  alpha=0.1) 
-# problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=0.1)
+alpha =0.1 # 0.1, , 10
+problem = Problem(filename="GRCh38_latest_rna.fna", K=12, N =50000000, L=200, alpha = alpha) #N =5000000, 10000000, 20000000, 50000000
+# problem = Problem(filename="sampled_genome_"+str(0.1), K=14, N =5000000, L=100,  alpha=alpha) 
+# problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=alpha)
 
 ## Get ground truth theta
 try:
@@ -57,12 +57,13 @@ for solver_name in solver_names:
             
             errors= get_errors(dict_results['xs'], dict_simulation['theta_true']) #np.linalg.norm(dict_results['xs'] - dict_simulation['theta_true'], ord =1) 
             error_repeat.append(errors)
-            max_length = np.maximum(max_length,len(errors) )
+            max_length = np.maximum(max_length, len(errors))
         plot_name = solver_name 
         if lrs !=None:
             plot_name = plot_name +'-'+str(lrs)        
         plot_name = solver_name_map(plot_name)
         dict_plot[plot_name]= error_repeat
+        plot_errors_and_scatter(problem, model_parameters)
             # dict_plot[solver_name_map(solver_name)] = error_repeat
         # else:
             # dict_plot[solver_name_map(solver_name)+'-'+str(lrs)] = error_repeat

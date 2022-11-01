@@ -22,7 +22,6 @@ alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = T
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(problem)  # force_repeat=True to force repeated simulation
-dict_simulation = load_simulation_parameters(problem)
 # Create y and X and save to file 
 reads_to_y(problem.K, READS_FILE, Y_FILE=Y_FILE)
 tr.transcriptome_to_x(problem.K, ISO_FILE, X_FILE,  L  =problem.L)
@@ -37,7 +36,8 @@ dict_results= model.fit(model_parameters, n_iters =50)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
-## Plotting
+## Plotting and checking against ground truth
+dict_simulation = load_simulation_parameters(problem)
 theta_true  = dict_simulation['theta_true']
 theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']
