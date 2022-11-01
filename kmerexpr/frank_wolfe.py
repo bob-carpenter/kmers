@@ -8,7 +8,7 @@ from numpy import maximum, sqrt
 from exp_grad_solver import prod_exp_normalize, update_records
 
 
-def linesearch(x, d, gd, loss, loss_grad, a_init =1, tau =1.1):
+def linesearch(x, loss0, d, gd, loss_grad, a_init =1.0, M =1.0, tau =1.2, max_iter =100):
     """
         x: starting point, numpy array in the simplex
         d: search direction
@@ -17,20 +17,25 @@ def linesearch(x, d, gd, loss, loss_grad, a_init =1, tau =1.1):
     Determines a stepsize a such that f(x_new) < f(x)+ a grad^T d +a^2*M/2 ||x_new- x||^2 
     to guarantee ascent
     """
-    #Determine max possible stepsize
     normdsqr = np.linalg.norm(d)**2
-    q = lambda a:  loss + a*gd +(M*a**2)/2 *normdsqr
+    q = lambda a:  loss0 + a*gd +((M*a**2)/2) *normdsqr
     a = a_init
-    q_val = loss
-    while loss <= q_val: 
+    q_val = loss0
+    loss_new =loss0
+    for count in range(max_iter):
         M = M*tau
-        a = np.minimum(-gd/(M*normdsqr),1)
+        a = np.minimum(-gd/(M*normdsqr),a_init)
+        if a == a_init:
+            M = tau*(-gd/(a_init*normdsqr))
         q_val = q(a)
-    return x+a*d, a
+        x_new = x+a*d
+        loss_new =  loss_grad(x_new, nograd =True)
+        if loss_new < q_val:
+            break
+    return a, M
 
 
-
-def frank_wolfe_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False, continue_from = 0):
+def frank_wolfe_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None,  away_step = False, pairsewise_step = False):
     """
     Frank Wolfe for minimizing
     max l(x)  s.t. sum(x) = 1 and x>0
@@ -46,62 +51,68 @@ def frank_wolfe_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8
     x = x_0.copy()
     x_av = x_0.copy()
     momentum = 0.9
-    loss0, grad0  = loss_grad(x_0, Hessinv)
+    loss0, grad0  = loss_grad(x_0)
     grad = grad0.copy()
+    loss = loss0
+    loss_old = loss
     normg0 = sqrt(grad0 @ grad0)
     norm_records = []
     loss_records = []
     xs = []
     iteration_counts =[]
     num_steps_between_snapshot = maximum(int(n_iters/15),1)
-    active_set = np.zeros(x.shape, dtype=bool)
-    active_set_non_empty = False
+    M  = 0 #initial guess of smoothness
     for iter in range(n_iters):
-        if lrs is None or lrs == "linesearch":
+        imin = np.argmin(grad)  #FW direction
+        test_pass = False
+        if away_step and x.any() != 0: #away step
+            imax = np.argmax(grad[x >0])  #Away step
+            test_pass = grad[imax] +grad[imin] <= 2*grad.dot(x)     
+        if away_step and test_pass: # away step
+            lrst = 0.95*(x[imax]/(1-x[imax]))
+            d = x.copy()
+            d[imax] = d[imax] -1
+        else: # FW step
+            lrst = 0.95
+            d = -x.copy()
+            d[imin] = d[imin] +1
+
+        if type(lrs) == str:
+            if away_step and test_pass:
+                gd = grad@(x) - grad[imax] 
+            else:
+                gd = grad[imin] - grad@(x)   # d  =e_max - x
+            if M ==0:
+                eps= 0.001
+                _, gradeps  = loss_grad(x_0+eps*d)
+                M = np.linalg.norm(grad -gradeps)/ (eps*np.linalg.norm(d))
+            else: 
+                eta = 0.5
+                M_new = eta*M
+                if loss_old != loss:
+                    M_new = gd**2/(2*(loss_old-loss)*np.linalg.norm(d)**2)
+                M = np.clip(M_new, eta*M, M)
+            lrst, M = linesearch(x, loss, d, gd, loss_grad, a_init =lrst, M = M)
+        elif lrs is None:
             lrst = 2/(iter+3)
-        # elif lrs == "linesearch":
-        #     lrst
         elif lrs.shape == (1,):
             lrst = lrs[0]
         else:
             lrst = lrs[iter]
-
-        imax = np.argmax(grad)  #FW direction
-        test1 = True
-        if active_set_non_empty: #away step
-            imin = np.argmax(grad[active_set])  #Away step
-            test1 = grad[imax] +grad[imin] <= 2*grad.dot(x)
-        test1 = True        
- 
-        # test = grad.dot(dFW) >= grad.dot(dA)
-        # test1 = True
-        
-        if test1: # FW step
-            x_new = (1-lrst)*x
-            x_new[imax] += lrst
-        else: # away step
-            lrst = lrst*(x[imin]/(1-x[imin]))
-            x_new = (1+lrst)*x
-            x_new[imin] -= lrst
-
-        active_set = x_new >0
-        active_set_non_empty =True
-        # if x_new[imax] >0:
-        #     active_set[imax] = True
-        #     active_set_non_empty =True
+        x_new = x+lrst*d #update
         if np.isnan(x_new.sum()):
             print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )
             break
         x_av = momentum*x_av +(1-momentum)*x_new
-
-        loss, grad_new  = loss_grad(x_new, Hessinv = Hessinv)
+        loss_old = loss
+        loss, grad_new  = loss_grad(x_new)
         
         # Checking if method is stopping
         if norm(x_new - x, ord =1) <= tol:
-            print("Exp_grad iterates are less than: " + str(tol), " apart. Stopping")
+            print("Frank Wolfe iterates are less than: " + str(tol), " apart. Stopping")
             break
         if norm(grad_new -grad , ord =1)<= gtol: 
-            print("Exp_grad grads are less than: " + str(gtol), " apart. Stopping")
+            print("Frank Wolfe grads are less than: " + str(gtol), " apart. Stopping")
             break
         grad = grad_new
         x = x_new

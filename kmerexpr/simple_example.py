@@ -7,54 +7,45 @@ from simulate_reads import length_adjustment_inverse
 from rna_seq_reader import reads_to_y
 import numpy as np
 import os 
-from utils import get_path_names, load_lengths
-from utils import load_simulation_parameters, load_run_result
-from plotting import plot_error_vs_iterations, plot_scatter, get_plot_title
+from utils import load_lengths, Problem, Model_Parameters
+from utils import load_simulation_parameters, load_run_result, get_plot_title
+from plotting import plot_error_vs_iterations, plot_scatter 
 import random
 import time
 import scipy
 random.seed(42) 
 
-model_type = "simplex" 
-# model_type = "softmax"
-# model_type = "normal"
+model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs="warmstart")
+problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
 
-if(model_type == "softmax"):
-    model_class = mm.multinomial_model
-elif(model_type == "normal"):
-    model_class = mnm.normal_model
-else:
-    model_class = msm.multinomial_simplex_model
-
-filename = "test5.fsa" # "test5.fsa" "GRCh38_latest_rna.fna"
-K = 11
-N = 1000
-L = 14
-
-alpha = 0.1  #The parameter of the Dirchlet that generates reads
-ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha=alpha)
-READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha) 
-
+alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True
+ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
+tic = time.perf_counter()
+READS_FILE = sr.simulate_reads(problem)  # force_repeat=True to force repeated simulation
+dict_simulation = load_simulation_parameters(problem)
 # Create y and X and save to file 
-reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
-tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
-print(f"Created reads, counts and transciptome matrix x")
+reads_to_y(problem.K, READS_FILE, Y_FILE=Y_FILE)
+tr.transcriptome_to_x(problem.K, ISO_FILE, X_FILE,  L  =problem.L)
+toc = time.perf_counter()
+print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 
-lengths = load_lengths(filename, N, L) # get read lengths
-model = model_class(X_FILE, Y_FILE, lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
-dict_results= model.fit(n_iters =200)
+lengths = load_lengths(problem.filename, problem.N, problem.L)
+model = model_parameters.initialize_model(X_FILE, Y_FILE,  lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
+
+tic = time.perf_counter()
+dict_results= model.fit(model_parameters, n_iters =50) 
+toc = time.perf_counter()
+print(f"Fitting model took {toc - tic:0.4f} seconds")
 
 ## Plotting
-dict_simulation = load_simulation_parameters(filename, N, L, alpha= alpha) #Getting ground truth for evaluation
 theta_true  = dict_simulation['theta_true']
 theta_sampled   = dict_simulation['theta_sampled']
 psi_true = dict_simulation['psi']
 
-title = get_plot_title(filename,model_type,N,L,K)
-
-if model_type=='simplex':
+title = get_plot_title(problem, model_parameters)
+if model_parameters.model_type=='simplex':
     title_errors=title +'-theta-errors-'
-    plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)
+    plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type = "simplex")
 
 # Plotting scatter of theta_{opt} vs theta_{*} for a fixed k
 theta_opt = dict_results['x']

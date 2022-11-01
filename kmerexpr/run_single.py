@@ -7,29 +7,28 @@ import simulate_reads as sr
 from rna_seq_reader import reads_to_y
 import numpy as np
 import os 
-from utils import get_path_names
 from utils import save_run_result
 import random
 import time
 
 from simulate_reads import length_adjustment_inverse
-from plotting import plot_scatter, plot_error_vs_iterations, get_plot_title
-from utils import load_simulation_parameters
-from utils import load_run_result
-from utils import load_lengths
+from utils import load_lengths, Problem, Model_Parameters
+from utils import load_simulation_parameters, load_run_result, get_plot_title
+from plotting import plot_error_vs_iterations, plot_scatter 
 
-def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulation, lengths):
-    dict_results = load_run_result(filename, model_type, N, L,  K, alpha =alpha)
+def plot_errors_and_scatter(problem, model_parameters):
+    dict_results = load_run_result(problem, model_parameters)
+    dict_simulation = load_simulation_parameters(problem)
     theta_true = dict_simulation['theta_true']
     psi_true = dict_simulation['psi']
     # Plotting error vs iterations for simplex method
-    # title = filename+'-'+model_type + "-N-" + str(N) + "-L-" + str(L) + "-K-"+str(K) +'-alpha-'+str(alpha)
-    title = get_plot_title(filename,model_type,N,L,K, solver)
-    if model_type == "simplex":
+    title = get_plot_title(problem, model_parameters)
+    if model_parameters.model_type == "simplex":
         title_errors =title + '-theta-errors'
-        plot_error_vs_iterations(dict_results, theta_true, title_errors, model_type)
+        plot_error_vs_iterations(dict_results, theta_true, title_errors, model_parameters.model_type)
 
     # Plotting scatter of psi_{opt} vs psi_{*}
+    lengths = load_lengths(problem.filename, problem.N, problem.L)
     theta_opt = dict_results['x']
     psi_opt = length_adjustment_inverse(theta_opt, lengths)
 
@@ -44,68 +43,54 @@ def plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulatio
     print("L1 distance to theta_true = ", str(np.linalg.norm(theta_true - theta_opt, ord =1)))
     print("L1 distance to theta_sampled = ", str(np.linalg.norm(dict_simulation['theta_sampled'] - theta_opt, ord =1)))
 
-def run_model(filename, model_type, N, L, K, alpha=None, n_iters = 5000,  force_repeat = True):
+def run_model(problem, model_parameters, n_iters = 5000,   force_repeat = False):
    # Need to check if y and X already exit. And if so, just load them.
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha = alpha)
+    ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     tic = time.perf_counter()
     if os.path.exists(Y_FILE) is False or force_repeat is True:
         print("Generating ", Y_FILE)
-        y = reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
+        y = reads_to_y(problem.K, READS_FILE, Y_FILE=Y_FILE)
     if os.path.exists(X_FILE) is False or force_repeat is True:
         print("Generating ", X_FILE)
-        tr.transcriptome_to_x(K, ISO_FILE, X_FILE,  L  =L)
+        tr.transcriptome_to_x(problem.K, ISO_FILE, X_FILE,  L  =problem.L)
     toc = time.perf_counter()
-    ## Fit model
-    if(model_type == "softmax"):
-        model_class = mm.multinomial_model
-    elif(model_type == "normal"):
-        model_class = mnm.normal_model
-    else:
-        model_class = msm.multinomial_simplex_model
-    model = model_class(X_FILE, Y_FILE)
+
     print(f"Generated/loaded y and X  in {toc - tic:0.4f} seconds")
     tic = time.perf_counter()
-    print("Fittting model: ", model_type)
-
-    dict_opt = model.fit(theta0=None, n_iters=n_iters)
-    
+    ## Fit model
+    lengths = load_lengths(problem.filename, problem.N, problem.L)
+    print("Fittting model: ", model_parameters.model_type)
+    model = model_parameters.initialize_model(X_FILE, Y_FILE,  lengths=lengths)
+    dict_results = model.fit(model_parameters, n_iters=n_iters)
     toc = time.perf_counter()
-    dict_opt['fit-time'] = toc - tic
+    dict_results['fit-time'] = toc - tic
     print(f"Fitting model took {toc - tic:0.4f} seconds")
 
     # os.remove(X_FILE)  # delete file
-    return dict_opt
+    return dict_results
 
 
 if __name__ == '__main__': 
     random.seed(42) 
-    model_type = "simplex" 
-    # model_type = "softmax"
-    # model_type = "normal"
-
-    # filename =  "test5.fsa"# "test5.fsa" "GRCh38_latest_rna.fna"
-    # K = 10
-    # N = 2000
-    # L = 14
-    filename = "GRCh38_latest_rna.fna" # "test5.fsa" "GRCh38_latest_rna.fna"
-    # p=0.1
-    # filename ="sampled_genome_"+str(p)
-    K = 15
-    N = 5000000
-    L = 100 
-    alpha = 0.1  # Parameter of Dirchlet that generates ground truth psi  
+    # model_parameters = Model_Parameters(model_type = "softmax", solver_name = "lbfgs",  lrs = "lin-warmstart", init_iterates ="uniform")
+    model_parameters = Model_Parameters(model_type = "simplex", solver_name = "exp_grad", lrs = "armijo", init_iterates ="uniform")
+    # model_parameters = Model_Parameters(model_type = "simplex", solver_name = "frank_wolfe", lrs = "warmstart", init_iterates ="uniform")
+    # problem = Problem(filename="GRCh38_latest_rna.fna", K=15, N =50000000, L=200, alpha =0.1) #N =5000000, 10000000, 20000000, 50000000
+    # problem = Problem(filename="sampled_genome_"+str(0.1), K=15, N =5000000, L=100,  alpha=0.1)  # alpha=0.1, 0.5
+    problem = Problem(filename="test5.fsa", K=8, N =1000, L=14, alpha=10)
     force_repeat = False
-    print("experiment (N, L, K) = (",str(N),", ",str(L), ", ",str(K), ")" )
+    print("experiment (N, L, K) = (",str(problem.N),", ",str(problem.L), ", ",str(problem.K), ")" )
     tic = time.perf_counter()
-    READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat = force_repeat)  # force_repeat=True to force repeated simulation
-    toc = time.perf_counter()
-    dict_simulation = load_simulation_parameters(filename, N, L, alpha)
-    print(f"Created reads in {toc - tic:0.4f} seconds")
-    import pdb; pdb.set_trace()
-    # dict_opt = run_model(filename, model_type, N, L, K, alpha = alpha, n_iters = 80000, force_repeat = force_repeat) 
-    # save_run_result(filename, model_type, N, L,  K, dict_opt, alpha =alpha) # saving latest solution
+    sr.simulate_reads(problem, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
 
-    lengths = load_lengths(filename, N, L)
-    plot_errors_and_scatter(filename, model_type, N, L, K, alpha, dict_simulation, lengths)
+    toc = time.perf_counter()
+    print(f"Created reads in {toc - tic:0.4f} seconds")
+
+    dict_results = run_model(problem, model_parameters, n_iters = 400, force_repeat = force_repeat) 
+    save_run_result(problem, model_parameters, dict_results) # saving latest solution
+    dict_results = load_run_result(problem, model_parameters)
+    dict_simulation = load_simulation_parameters(problem)
+
+    plot_errors_and_scatter(problem, model_parameters)
 
 
