@@ -20,8 +20,11 @@ def read_fasta(handle: TextIOBase) -> Generator[Sequence, None, None]:
     """
     Basic lazy FASTA format reader.
 
-    This assumes the only comments are headers. Sequences can be split
-    over multiple lines. 
+    This assumes a single description line per sequence. Additional
+    comments are not supported.
+
+    Sequences can be split over multiple lines, and whitespace lines
+    are ignored.
     """
     head = ""
     for line in handle:
