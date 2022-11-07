@@ -2,7 +2,6 @@ import numpy as np  # BSD-3
 from utils import save_simulation_parameters, save_lengths, get_simulation_dir
 from os import path
 import fasta
-np.random.seed(42)
 
 def length_adjustment(psi, lengths):
     theta = psi*lengths
@@ -15,6 +14,7 @@ def length_adjustment_inverse(theta, lengths):
     return psi
 
 def simulate_reads(problem,  force_repeat = True):  #
+    np.random.seed(42)
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
     then samples the reads from this subsampled data.
