@@ -1,7 +1,7 @@
 import numpy as np  # BSD-3
-import fastaparser  # GPLv3
 from utils import save_simulation_parameters, save_lengths, get_simulation_dir
 from os import path
+import fasta
 np.random.seed(42)
 
 def length_adjustment(psi, lengths):
@@ -41,7 +41,7 @@ def simulate_reads(problem,  force_repeat = True):  #
     L = problem.L
     N = problem.N
     with open(ISO_FILE, "r") as f:
-        parser = fastaparser.Reader(f, parse_method="quick")
+        parser = fasta.read_fasta(f)
         pos = 0
         for s in parser:
             if "PREDICTED" in s.header:
@@ -70,7 +70,7 @@ def simulate_reads(problem,  force_repeat = True):  #
     save_simulation_parameters(problem, psi, theta_true, theta_sampled)
     save_lengths(problem.filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
-        for n in range(N): 
+        for n in range(N):
             if (n + 1) % 100000 == 0:
                 print("sim n = ", n + 1)
             seq = isoforms[iso_sampled[n]]
@@ -83,7 +83,7 @@ def simulate_reads(problem,  force_repeat = True):  #
     return READS_FILE
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
 
     from utils import Problem
     problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
@@ -91,4 +91,4 @@ if __name__ == '__main__':
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     READS_FILE = simulate_reads(problem)
     print("generated: ", READS_FILE)
-    
+

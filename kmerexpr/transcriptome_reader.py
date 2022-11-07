@@ -1,8 +1,8 @@
 from scipy.sparse import csr_matrix, save_npz, load_npz  # BSD-3
 import numpy as np  # BSD-3
-import fastaparser  # GPLv3
 from collections import Counter
 from functools import lru_cache
+import fasta
 
 base_id = {"A": 0, "C": 1, "G": 2, "T": 3}
 
@@ -34,17 +34,23 @@ def shred(seq, K):
 
 
 def transcriptome_to_x(
-    K, fasta_file, x_file, L =None, max_nz=500 * 1000 * 1000, float_t=np.float32, int_t=np.int32
+    K,
+    fasta_file,
+    x_file,
+    L=None,
+    max_nz=500 * 1000 * 1000,
+    float_t=np.float32,
+    int_t=np.int32,
 ):
     print("K =", K)
     print("fasta file =", fasta_file)
     print("target x file =", x_file)
     print("float type =", float_t)
     print("int type =", int_t)
-    M = 4**K
+    M = 4 ** K
     print("M =", M)
     with open(fasta_file) as f:
-        parser = fastaparser.Reader(f, parse_method="quick")
+        parser = fasta.read_fasta(f)
         n = 0
         data = np.zeros(max_nz, dtype=float_t)
         row_ind = np.zeros(max_nz, dtype=int_t)
@@ -56,7 +62,7 @@ def transcriptome_to_x(
             if "PREDICTED" in s.header:
                 continue
             seq = s.sequence
-            if(L is not None):
+            if L is not None:
                 if len(seq) < L:
                     continue
             iter = shred(s.sequence, K)
@@ -77,4 +83,3 @@ def transcriptome_to_x(
     xt = csr_matrix((data, (row_ind, col_ind)), shape=(M, n), dtype=float_t)
     print("saving csr matrix to file = ", x_file)
     save_npz(x_file, xt)
-

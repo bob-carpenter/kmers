@@ -1,9 +1,8 @@
 import numpy as np  # BSD-3
-import fastaparser  # GPLv3
 from utils import get_path_prefix_surfix
 from utils import save_simulation_parameters
 from os import path
-
+import fasta
 
 def sample_genome_data(filename, sampled_file, p):  #
     """
@@ -14,7 +13,7 @@ def sample_genome_data(filename, sampled_file, p):  #
     SAMPLE_FILE_PATH = ISO_FILE.replace(filename, sampled_file)
     isoforms = []
     with open(ISO_FILE, "r") as f:
-        parser = fastaparser.Reader(f, parse_method="quick")
+        parser = fasta.read_fasta(f)
         pos = 0
         for s in parser:
             if "PREDICTED" in s.header:
@@ -40,7 +39,7 @@ def sample_genome_data(filename, sampled_file, p):  #
             # print("sampled isoform num ", y_sampled[n], " is ",  seq)
     return SAMPLE_FILE_PATH
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     p = 0.01
     filename = "../data/GRCh38_latest_rna.fna"
     sampled_file = "sampled_genome" + "_" + str(p)
