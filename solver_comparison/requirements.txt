@@ -1,0 +1,18 @@
+# BSD/Apache
+cryptography==36.0.1
+# GPL
+fastaparser==1.1
+# BSD
+numpy==1.21.4
+# BSD
+protobuf==3.19.1
+# MIT
+pytest==6.2.5
+# BSD
+scipy==1.7.3
+# NUMBA
+numba==0.56.2
+# MATPLOTLIB
+matplotlib==3.5.3
+# BSD
+pandas==1.5.0
