@@ -1,7 +1,7 @@
 """
 Module for reading in FASTA sequence files.
 
-Structured similary to BioPython's BSD-3 parser
+Structured similarly to BioPython's BSD-3 parser
 https://github.com/biopython/biopython/blob/76796c970a68fa09da94dc95827b217a872004e2/Bio/SeqIO/FastaIO.py
 """
 
@@ -20,7 +20,8 @@ def read_fasta(handle: TextIOBase) -> Generator[Sequence, None, None]:
     """
     Basic lazy FASTA format reader.
 
-    This assumes the only comments are headers.
+    This assumes the only comments are headers. Sequences can be split
+    over multiple lines. 
     """
     head = ""
     for line in handle:
@@ -38,3 +39,5 @@ def read_fasta(handle: TextIOBase) -> Generator[Sequence, None, None]:
             head = line[1:].rstrip()
             continue
         seq += line.strip()
+
+    yield Sequence(head, seq)
