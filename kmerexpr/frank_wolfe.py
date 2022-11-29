@@ -1,11 +1,10 @@
-# Exponentiated Gradient Descent
 import numpy as np
 import time
 from scipy.special import softmax as softmax
 from numba import jit
 from numpy.linalg import norm
 from numpy import maximum, sqrt
-from exp_grad_solver import prod_exp_normalize, update_records
+from kmerexpr.exp_grad_solver import update_records
 
 
 def linesearch(x, loss0, d, gd, loss_grad, a_init =1.0, M =1.0, tau =1.2, max_iter =100):

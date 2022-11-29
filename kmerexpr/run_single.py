@@ -1,20 +1,17 @@
 
-import multinomial_model as mm
-import multinomial_simplex_model as msm
-import normal_model as mnm
-import transcriptome_reader as tr
-import simulate_reads as sr
-from rna_seq_reader import reads_to_y
+from kmerexpr import transcriptome_reader as tr
+from kmerexpr import simulate_reads as sr
+from kmerexpr.rna_seq_reader import reads_to_y
 import numpy as np
 import os 
-from utils import save_run_result
+from kmerexpr.utils import save_run_result
 import random
 import time
 
-from simulate_reads import length_adjustment_inverse
-from utils import load_lengths, Problem, Model_Parameters
-from utils import load_simulation_parameters, load_run_result, get_plot_title
-from plotting import plot_error_vs_iterations, plot_scatter 
+from kmerexpr.simulate_reads import length_adjustment_inverse
+from kmerexpr.utils import load_lengths, Problem, Model_Parameters
+from kmerexpr.utils import load_simulation_parameters, load_run_result, get_plot_title
+from kmerexpr.plotting import plot_error_vs_iterations, plot_scatter
 
 def plot_errors_and_scatter(problem, model_parameters):
     dict_results = load_run_result(problem, model_parameters)

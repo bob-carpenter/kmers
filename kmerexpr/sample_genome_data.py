@@ -1,8 +1,7 @@
 import numpy as np  # BSD-3
-from utils import get_path_prefix_surfix
-from utils import save_simulation_parameters
+from kmerexpr.utils import get_path_prefix_surfix
 from os import path
-import fasta
+from kmerexpr import fasta
 
 def sample_genome_data(filename, sampled_file, p):  #
     """

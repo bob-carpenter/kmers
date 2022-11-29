@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
-from transcriptome_reader import valid_kmer, shred, kmer_to_id
-import fasta
+from kmerexpr.transcriptome_reader import valid_kmer, shred, kmer_to_id
+from kmerexpr import fasta
 
 def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None):
     print("K =", K)

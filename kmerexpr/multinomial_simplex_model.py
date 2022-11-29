@@ -2,10 +2,9 @@ import numpy as np
 from scipy.sparse import load_npz
 from scipy.sparse.linalg import lsqr
 from scipy import optimize
-from exp_grad_solver import exp_grad_solver
+from kmerexpr.exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
-# from simulate_reads import length_adjustment
-from frank_wolfe import frank_wolfe_solver
+from kmerexpr.frank_wolfe import frank_wolfe_solver
 
 
 

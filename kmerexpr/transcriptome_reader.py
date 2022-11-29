@@ -2,7 +2,7 @@ from scipy.sparse import csr_matrix, save_npz, load_npz  # BSD-3
 import numpy as np  # BSD-3
 from collections import Counter
 from functools import lru_cache
-import fasta
+from kmerexpr import fasta
 
 base_id = {"A": 0, "C": 1, "G": 2, "T": 3}
 
