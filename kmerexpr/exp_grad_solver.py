@@ -63,7 +63,7 @@ def exp_grad_solver(loss_grad, x_0, lrs=None, tol=10**(-8.0), gtol=10**(-8.0), n
     Args:
         loss_grad (Callable): Function to compute the loss and gradient.
         x_0 (NDarray): Initial parameters.
-        lrs (optional): Learning rate. Either a string ("Armijo"), a scalar 
+        lrs (optional): Learning rate. Either a string ("armijo"), a scalar
             learning rate, a list of learning rates to use at each step.
         tol (float, optional): L1 Tolerance for the iterates stopping condition.
             Stops if the iterates don't move by more than tol in L1 norm.
