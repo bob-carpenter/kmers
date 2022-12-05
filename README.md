@@ -66,9 +66,9 @@ of now the latest version is GRCh38.  Place that in a directory called
 and you should be good to execute all of the tests or use that for the
 isoform file.
 
-Executing 
+Executing
 ```console
-> python3 download_data.py 
+> python3 download_data.py
 ```
 will download the latest version (as of 10th of April 2022) into the `/data` directory.
 
@@ -177,10 +177,3 @@ licensed.
 ### `scipy` / `numpy`
 
 Scipy and Numpy are BSD-3 licensed.
-
-### `fastaparser`
-
-The fastaparser package is GPLv3 licensed. If this approach works out,
-we'll replace that with a non-copylefted Fasta parser as the
-functionality we need is not that difficult to code.
-

@@ -1,7 +1,7 @@
 import numpy as np
 from collections import Counter
 from transcriptome_reader import valid_kmer, shred, kmer_to_id
-import fastaparser
+import fasta
 
 def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None):
     print("K =", K)
@@ -13,7 +13,7 @@ def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None)
     y = np.zeros(M)
     n = 0
     with open(READS_FILE) as f:
-        parser = fastaparser.Reader(f, parse_method="quick")
+        parser = fasta.read_fasta(f)
         for seq in parser:
             if n % 10000 == 0:
                 print("seqs read =", n)

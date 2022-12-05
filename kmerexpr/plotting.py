@@ -4,7 +4,7 @@ import numpy as np
 from utils import get_errors
 
 
-def plot_scatter(title,xaxis,yaxis, horizontal = False):
+def plot_scatter(title,xaxis,yaxis, horizontal = False, save_path="./figures"):
     plt.scatter(xaxis,yaxis , s=5, alpha=0.4 )  #theta_opt
     if horizontal:
         title = title + "-psi-minus-scatter"
@@ -17,7 +17,6 @@ def plot_scatter(title,xaxis,yaxis, horizontal = False):
         plt.ylabel(r"$ \psi^{*}$", fontsize=25)
 
     plt.xlabel(r"$ \psi^{opt}$", fontsize=25)
-    save_path="./figures"
     plt.savefig(os.path.join(save_path, title + ".pdf"), bbox_inches="tight", pad_inches=0.01)
     print("Saved plot ", os.path.join(save_path, title + ".pdf"))
     plt.close()
@@ -91,13 +90,13 @@ def plot_iter(result_dict, problem, title, save_path, threshold=False, tol=False
         fontsize=fontsize,
     )
     
-def plot_error_vs_iterations(dict_results, theta_true, title, model_type):
+def plot_error_vs_iterations(dict_results, theta_true, title, model_type, save_path="./figures"):
     errors_list = []
     dict_plot = {}
     errors= get_errors(dict_results['xs'], theta_true)
     errors_list.append(errors)
     dict_plot[model_type] = errors_list
-    plot_general(dict_plot, title=title , save_path="./figures", 
+    plot_general(dict_plot, title=title , save_path=save_path,
                 yaxislabel=r"$\|\theta -\theta^{*} \|$", xticks= dict_results['iteration_counts'], xaxislabel="iterations")
     plt.close()
 

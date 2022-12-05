@@ -52,7 +52,7 @@ def update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,
     loss_records.append(loss)
     iteration_counts.append(iter)
 
-def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0),  n_iters = 10000, verbose=True,  n = None, Hessinv=False):
+def exp_grad_solver(loss_grad, x_0, lrs=None, tol=10**(-8.0), gtol=10**(-8.0), n_iters=10000, verbose=True, hess_inv=False, callback=None):
     """
     Exponentiated Gradient Descent for minimizing
     max l(x)  s.t. sum(x) = 1 and x>0
@@ -60,13 +60,26 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
     updates take the form of
     x^{t+1}  =  (x^t_i exp( lr_t  grad^t_i )) /(sum (x^t_j exp(lr_t  grad^t_j )).
 
-    n = number of sub functions in l(x) = sum_{i=1}^n l_i(x), Assumes l_i(x), nabla l_i(x) = loss_grad(x, i) 
-    batchsize = number of 
+    Args:
+        loss_grad (Callable): Function to compute the loss and gradient.
+        x_0 (NDarray): Initial parameters.
+        lrs (optional): Learning rate. Either a string ("armijo"), a scalar
+            learning rate, a list of learning rates to use at each step.
+        tol (float, optional): L1 Tolerance for the iterates stopping condition.
+            Stops if the iterates don't move by more than tol in L1 norm.
+        gtol (float, optional): L1 Tolerance for the gradient stopping condition.
+            Stop if the gradient is smaller than gtol in L1 norm.
+        n_iters (int, optional): Total number of iterations.
+        verbose (float, optional): Print progress on stdout.
+        hess_inv (bool, optional): Whether to precondition the gradient with the
+            diagonal of the Hessian.
+        callback (Callable[x: NDarray], optional): Function called after each
+            iteration, passing the current parameters.
     """
     x = x_0.copy()
     x_av = x_0.copy()
     momentum = 0.9
-    loss0, grad0  = loss_grad(x_0, Hessinv)
+    loss0, grad0  = loss_grad(x_0, hess_inv)
     loss = loss0
     grad = grad0.copy()
     normg0 = sqrt(grad0 @ grad0)
@@ -86,7 +99,7 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
             x_new, lrst = linesearch(x, grad, loss, loss_grad, a_init =lrst, armijo =armijo)
         else:
             if lrs is None:
-                if Hessinv:
+                if hess_inv:
                     lrst = 1/(norm(grad, np.inf)*(iter+1)**2 )
                 else:
                     lrst = 2**(-1/2)/(norm(grad, np.inf)*sqrt(iter+1) )
@@ -96,22 +109,26 @@ def exp_grad_solver(loss_grad,  x_0, lrs=None, tol=10**(-8.0), gtol = 10**(-8.0)
                 lrst = lrs[iter]
             # Update using prod exp function
             x_new = prod_exp_normalize(x, lrst*grad)
-        # x_new = softmax(np.log(x) +lrst*grad)  # 
+
         if np.isnan(x_new.sum()):
             print("iterates have a NaN a iteration ",iter, " existing and return previous iterate" )
             break
         x_av = momentum*x_av +(1-momentum)*x_new
-        loss, grad_new  = loss_grad(x_new, Hessinv = Hessinv)
-        
+        loss, grad_new = loss_grad(x_new, Hessinv=hess_inv)
+
         # Checking if method is stopping
         if norm(x_new - x, ord =1) <= tol:
             print("Exp_grad iterates are less than: " + str(tol), " apart. Stopping")
             break
-        if norm(grad_new -grad , ord =1)<= gtol: 
+        if norm(grad_new - grad, ord=1) <= gtol:
             print("Exp_grad grads are less than: " + str(gtol), " apart. Stopping")
             break
         grad = grad_new
         x = x_new
+
+        if callback is not None:
+            callback(x)
+
         if (iter + 1) % num_steps_between_snapshot == 0:
             update_records(grad,normg0,loss,loss0,x, iter, xs,norm_records,loss_records,iteration_counts)
             # Print progress

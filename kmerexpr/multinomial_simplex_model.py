@@ -129,7 +129,7 @@ class multinomial_simplex_model:
         theta0 = theta0/theta0.sum()
         return theta0       
 
-    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters = 100,   Hessinv = False):
+    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters=100, hess_inv=False):
 
         if theta0 is None:  #initialize to uniform
             if model_parameters.init_iterates == "lsq":
@@ -150,6 +150,6 @@ class multinomial_simplex_model:
             dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, away_step = model_parameters.joker)
         else: 
             self.solver_name=="exp_grad"
-            dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, Hessinv= Hessinv)
+            dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs=model_parameters.lrs, tol=tol, gtol=gtol, n_iters=n_iters, hess_inv=hess_inv)
             
         return dict_sol
