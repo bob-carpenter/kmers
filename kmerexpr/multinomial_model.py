@@ -83,6 +83,7 @@ class multinomial_model:
             y = np.load(y_file)
         self.ymask = y.nonzero() # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
+        self.ynnz = self.ynnz / np.sum(self.ynnz)
         self.xnnz = x[self.ymask]
         self.N = np.sum(y)
         self.name = "softmax"
