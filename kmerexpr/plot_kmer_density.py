@@ -1,14 +1,7 @@
-import multinomial_model as mm
-import multinomial_simplex_model as msm
-import transcriptome_reader as tr
-import simulate_reads as sr
-from simulate_reads import length_adjustment_inverse
-from rna_seq_reader import reads_to_y
+from kmerexpr import simulate_reads as sr
+from kmerexpr.rna_seq_reader import reads_to_y
 import numpy as np
-from plotting import plot_general
-from run_single import run_model
-from utils import save_run_result, load_simulation_parameters
-from utils import get_path_names, load_run_result
+from kmerexpr.utils import Problem
 import random
 import matplotlib.pyplot as plt
 import os
@@ -32,13 +25,14 @@ for alpha in alphas:
     for K in Ks:
         print("K: ", K)
         # theta_opt = run_model_load_and_save(filename, model, N, L, K, load_old = load_old, n_iters= 200, force_repeat = force_repeat)
-        ISO_FILE, READS_FILE, X_FILE, Y_FILE = get_path_names(filename, N, L, K, alpha)
+        problem = Problem(filename=filename, K=K, N =N, L=L)
+        ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
         READS_FILE = sr.simulate_reads(filename, N, L, alpha = alpha, force_repeat=force_repeat)  # Only do this once
         y = reads_to_y(K, READS_FILE, Y_FILE=Y_FILE)
         ynnzs.append(np.count_nonzero(y))
         ynnzs_relative.append(np.count_nonzero(y)/len(y))
 
-    title = filename + "-N-" + str(N) + "-L-" + str(L) +'-alpha-'+str(alpha) 
+    title = filename + "-N-" + str(N) + "-L-" + str(L) +'-alpha-'+str(alpha)
     plt.rc("text", usetex=True)
     plt.rc("font", family="sans-serif")
     plt.plot(Ks,ynnzs, markersize=12, lw=3)

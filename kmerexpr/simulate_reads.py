@@ -1,7 +1,7 @@
 import numpy as np  # BSD-3
-from utils import save_simulation_parameters, save_lengths, get_simulation_dir
+from kmerexpr.utils import save_simulation_parameters, save_lengths, get_simulation_dir
 from os import path
-import fasta
+from kmerexpr import fasta
 
 def length_adjustment(psi, lengths):
     theta = psi*lengths

@@ -1,16 +1,15 @@
 
-from rna_seq_reader import reads_to_y
-import simulate_reads as sr
-from simulate_reads import length_adjustment_inverse
+from kmerexpr import simulate_reads as sr
+from kmerexpr.simulate_reads import length_adjustment_inverse
 import numpy as np
 from scipy.special import softmax as softmax
 from matplotlib import pyplot as plt
-from utils import  Problem, Model_Parameters, save_run_result
-from utils import load_simulation_parameters, load_lengths
-from plotting import plot_general, plot_general_test
+from kmerexpr.utils import Problem, Model_Parameters, save_run_result
+from kmerexpr.utils import load_simulation_parameters, load_lengths
+from kmerexpr.plotting import plot_general
 import random
-from run_single import run_model, plot_errors_and_scatter
-from utils import get_errors, load_run_result
+from kmerexpr.run_single import run_model, plot_errors_and_scatter
+from kmerexpr.utils import load_run_result
 import os
 
 random.seed(42) # Fixing the seed
@@ -24,7 +23,7 @@ alphas = [0.01, 0.1, 1., 10.0]
 model_type = "simplex"
 solver_name = "exp_grad"
 lrs = "armijo"
-# filename= "test5.fsa"  # "GRCh38_latest_rna.fna"   "sampled_genome_"+str(0.1)  
+# filename= "test5.fsa"  # "GRCh38_latest_rna.fna"   "sampled_genome_"+str(0.1)
 # filename= "sampled_genome_"+str(0.1)
 filename= "GRCh38_latest_rna.fna"
 ## Generate data, with ground truth theta
@@ -41,7 +40,7 @@ for Lcount, L in enumerate(Ls):
                 model_parameters = Model_Parameters(model_type =model_type, solver_name=solver_name, lrs=lrs )
                 problem = Problem(filename=filename, K=K, N =N, L=L, alpha =alpha)
 
-                sr.simulate_reads(problem, force_repeat=False) 
+                sr.simulate_reads(problem, force_repeat=False)
                 dict_simulation = load_simulation_parameters(problem)
                 try:
                     dict_results = load_run_result(problem, model_parameters)
@@ -49,12 +48,12 @@ for Lcount, L in enumerate(Ls):
                     dict_results= run_model(problem, model_parameters, n_iters = 200)
                     save_run_result(problem, model_parameters, dict_results)
 
-                # error= np.linalg.norm(dict_results['x'] - dict_simulation['theta_true'], ord =1) 
+                # error= np.linalg.norm(dict_results['x'] - dict_simulation['theta_true'], ord =1)
                 lengths = load_lengths(problem.filename, problem.N, problem.L)
                 psi_opt = length_adjustment_inverse(dict_results['x'], lengths)
                 RMSE = np.sqrt(np.linalg.norm(dict_simulation['psi'] - psi_opt)/np.sqrt(psi_opt.shape))
                 error_reads.append(RMSE)
-                save_run_result(problem, model_parameters, dict_results) 
+                save_run_result(problem, model_parameters, dict_results)
                 plot_errors_and_scatter(problem, model_parameters)
             errors_total.append(error_reads)
             error_reads = []
@@ -82,5 +81,5 @@ for ax in axs.flat:
 plt.setp(ax,  ylim=(yminabs, ymaxabs))
 
 handles, labels = axs[len(Ls)-1,len(alphas)-1].get_legend_handles_labels()
-axs[len(Ls)-1,len(alphas)-1].legend(handles, labels, fontsize=20) 
+axs[len(Ls)-1,len(alphas)-1].legend(handles, labels, fontsize=20)
 fig.savefig("./figures/benchmark_read_length_"+filename+".pdf", bbox_inches="tight", pad_inches=0.01)

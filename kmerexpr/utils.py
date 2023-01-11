@@ -5,9 +5,9 @@ import pickle
 from typing import Any
 
 from dataclasses import dataclass, asdict
-import multinomial_model as mm
-import multinomial_simplex_model as msm
-import normal_model as mnm
+from kmerexpr import multinomial_model as mm
+from kmerexpr import multinomial_simplex_model as msm
+from kmerexpr import normal_model as mnm
 import hashlib
 
 @dataclass(frozen=True)

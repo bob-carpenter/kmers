@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from utils import get_errors
+from kmerexpr.utils import get_errors
 
 
 def plot_scatter(title,xaxis,yaxis, horizontal = False, save_path="./figures"):

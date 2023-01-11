@@ -1,20 +1,18 @@
 
-import multinomial_model as mm
-import multinomial_simplex_model as msm
-import normal_model as mnm
-import transcriptome_reader as tr
-import simulate_reads as sr
-from simulate_reads import length_adjustment_inverse
-from rna_seq_reader import reads_to_y
+from kmerexpr import transcriptome_reader as tr
+from kmerexpr import simulate_reads as sr
+from kmerexpr.simulate_reads import length_adjustment_inverse
+from kmerexpr.rna_seq_reader import reads_to_y
 import numpy as np
 import os 
-from utils import load_lengths, Problem, Model_Parameters
-from utils import load_simulation_parameters, load_run_result, get_plot_title
-from plotting import plot_error_vs_iterations, plot_scatter 
+from kmerexpr.utils import load_lengths, Problem, Model_Parameters
+from kmerexpr.utils import load_simulation_parameters, load_run_result, get_plot_title
+from kmerexpr.plotting import plot_error_vs_iterations, plot_scatter
 import random
 import time
 import scipy
-random.seed(42) 
+
+random.seed(42)
 # lrs = "armijo"
 lrs = "warmstart"
 # lrs = None
@@ -23,7 +21,7 @@ lrs = "warmstart"
 # solver = "exp_grad"
 solver = "frank_wolfe"
 # solver = "lbfgs"
-model_parameters = Model_Parameters(model_type = "simplex", solver_name = solver, lrs = lrs, init_iterates ="uniform") 
+model_parameters = Model_Parameters(model_type = "simplex", solver_name = solver, lrs = lrs, init_iterates ="uniform")
 # model_parameters = Model_Parameters(model_type = "softmax")
 # model_parameters = Model_Parameters(model_type = "normal")
 
@@ -35,7 +33,7 @@ ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
 tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(problem, force_repeat=force_repeat)  # force_repeat=True to force repeated simulation
 dict_simulation = load_simulation_parameters(problem)
-# Create y and X and save to file 
+# Create y and X and save to file
 if force_repeat:
     reads_to_y(problem.K, READS_FILE, Y_FILE=Y_FILE)
     tr.transcriptome_to_x(problem.K, ISO_FILE, X_FILE,  L  =problem.L)
@@ -46,7 +44,7 @@ lengths = load_lengths(problem.filename, problem.N, problem.L)
 model = model_parameters.initialize_model(X_FILE, Y_FILE,  lengths=lengths) # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
-dict_results= model.fit(model_parameters, n_iters =400) 
+dict_results= model.fit(model_parameters, n_iters =400)
 toc = time.perf_counter()
 print(f"Fitting model took {toc - tic:0.4f} seconds")
 
