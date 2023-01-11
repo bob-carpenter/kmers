@@ -1,9 +1,9 @@
 import numpy as np
-from scipy.sparse import load_npz
 from scipy.special import softmax as softmax
 from scipy import optimize
 import time
 from scipy.sparse.linalg import lsqr
+from kmerexpr.rna_seq_reader import load_xy
 
 # BMW: Class names are usually done in CamelCase style
 class normal_model:
@@ -45,11 +45,7 @@ class normal_model:
         y -- vector of k-mer counts
         N -- total number of k-mers
         """
-        self.x = load_npz(x_file)
-        if(isinstance(y_file, np.ndarray)):
-            self.y = y_file
-        else:
-            self.y = np.load(y_file)
+        self.x, self.y = load_xy(x_file, y_file)
         self.N = np.sum(self.y)
         self.beta = beta
         self.name = "normal"
