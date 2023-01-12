@@ -1,11 +1,10 @@
 import numpy as np
-from scipy.sparse import load_npz
 from scipy.sparse.linalg import lsqr
 from scipy import optimize
 from kmerexpr.exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
 from kmerexpr.frank_wolfe import frank_wolfe_solver
-
+from kmerexpr.rna_seq_reader import load_xy
 
 
 # BMW: Class names are usually done in CamelCase style
@@ -53,11 +52,7 @@ class multinomial_simplex_model:
         lengths -- an array of the lengths of the isoforms
         solver_name -- a string that is either mirror_bfgs or exp_grad, which are the two available solvers for fitting the model
         """
-        x = load_npz(x_file)
-        if(isinstance(y_file, np.ndarray)):
-            y = y_file
-        else:
-            y = np.load(y_file)
+        x, y = load_xy(x_file, y_file)
         self.ymask = y.nonzero() # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
         self.xnnz = x[self.ymask]

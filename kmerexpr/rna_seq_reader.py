@@ -2,6 +2,7 @@ import numpy as np
 from collections import Counter
 from kmerexpr.transcriptome_reader import valid_kmer, shred, kmer_to_id
 from kmerexpr import fasta
+from scipy.sparse import load_npz, save_npz, coo_matrix
 
 def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None):
     print("K =", K)
@@ -25,5 +26,14 @@ def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None)
                 y[id] += count
             n += 1
     if Y_FILE is not None:
-        np.save(Y_FILE, y)
+        save_npz(Y_FILE, coo_matrix(y))
     return y
+
+
+def load_xy(x_file, y_file):
+    x = load_npz(x_file)
+    if isinstance(y_file, np.ndarray):
+        y = y_file
+    else:
+        y = load_npz(y_file).toarray().squeeze()
+    return x, y

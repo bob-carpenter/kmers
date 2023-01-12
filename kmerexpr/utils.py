@@ -23,7 +23,7 @@ class Problem:
         READS_FILE = prefix + "READS-" + surfix + ".fna"
         X_FILE = prefix + "X-" + surfix + "-" + str(self.K) + "_csr.npz"
         Y_FILE = prefix + "Y-" + surfix + "-" + str(self.K)
-        Y_FILE = Y_FILE +"-a-" +str(self.alpha) + ".npy"
+        Y_FILE = Y_FILE +"-a-" +str(self.alpha) + ".npz"
         READS_FILE =  READS_FILE +"-a-" +str(self.alpha) + ".fna"
         return ISO_FILE, READS_FILE, X_FILE, Y_FILE
         
