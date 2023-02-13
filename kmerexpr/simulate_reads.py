@@ -44,11 +44,9 @@ def simulate_reads(problem,  force_repeat = True):  #
         parser = fasta.read_fasta(f)
         pos = 0
         for s in parser:
-            print("s: ",s)
             if "PREDICTED" in s.header:
                 continue
             seq = s.sequence
-            print("seq: ",seq)
             if len(seq) < L:
                 continue
             if pos % 100000 == 0:
