@@ -8,59 +8,60 @@ import re, collections
 import numpy, pandas
 
 import os
+
 np.random.seed(42)
 
 
-def polyester_parser(fasta, duds = ""):
+def polyester_parser(fasta, duds=""):
+    Ns = []
+    ncRNAs = []
 
-	Ns = []
-	ncRNAs = []
+    for record in SeqIO.parse(fasta, "fasta"):
+        if "N" in record.seq:
+            Ns.append(record.id)
+        if ", mRNA" not in record.description:
+            ncRNAs.append(record.id)
 
-	for record in SeqIO.parse(fasta, "fasta"):
-		if "N" in record.seq:
-			Ns.append(record.id)
-		if ", mRNA" not in record.description:
-			ncRNAs.append(record.id)
+    seq_parse = SeqIO.to_dict(SeqIO.parse(fasta, "fasta"))
 
-	seq_parse = SeqIO.to_dict(SeqIO.parse(fasta, "fasta"))
+    remove = [key for key, value in seq_parse.items() if len(value) < 100]
 
-	remove = [key for key, value in seq_parse.items() if len(value) < 100]
+    for small in remove:
+        try:
+            del seq_parse[small]
+        except KeyError:
+            pass
 
-	for small in remove:
-		try:
-			del seq_parse[small]
-		except KeyError:
-			pass
+    for N in Ns:
+        try:
+            del seq_parse[N]
+        except KeyError:
+            pass
 
-	for N in Ns:
-		try:
-			del seq_parse[N]
-		except KeyError:
-			pass
+    for ncRNA in ncRNAs:
+        try:
+            del seq_parse[ncRNA]
+        except KeyError:
+            pass
 
-	for ncRNA in ncRNAs:
-		try:
-			del seq_parse[ncRNA]
-		except KeyError:
-			pass
+    if duds:
+        duds = open(duds).readlines()
 
-	if duds:
-		duds = open(duds).readlines()
+        duds = [dud.replace(".fa", "") for dud in duds]
 
-		duds = [dud.replace(".fa", "") for dud in duds]
+        for dud in duds:
+            try:
+                del seq_parse[dud]
+            except KeyError:
+                pass
 
-		for dud in duds:
-			try:
-				del seq_parse[dud]
-			except KeyError:
-				pass
+    outputdir = os.path.dirname(fasta)
 
-	outputdir = os.path.dirname(fasta)
+    with open(os.path.join(outputdir, "cleaned_fasta.fa"), "w") as handle:
+        SeqIO.write(seq_parse.values(), handle, "fasta")
 
-	with open(os.path.join(outputdir, 'cleaned_fasta.fa'), 'w') as handle:
-			SeqIO.write(seq_parse.values(), handle, 'fasta')
 
-def simulate_reads(problem,  force_repeat = True):  #
+def simulate_reads(problem, force_repeat=True):  #
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
     then samples the reads from this subsampled data.
@@ -73,7 +74,11 @@ def simulate_reads(problem,  force_repeat = True):  #
     problem.alpha = parameter of Dirchlet distribution that generates psi
     """
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
-    if path.exists(get_simulation_dir(problem)) and path.exists(READS_FILE) and force_repeat is False:
+    if (
+        path.exists(get_simulation_dir(problem))
+        and path.exists(READS_FILE)
+        and force_repeat is False
+    ):
         return READS_FILE
     # if path.exists(get_simulation_dir(problem)) and force_repeat is False:
     #     print("Simulation results for ", problem ," already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
@@ -104,12 +109,12 @@ def simulate_reads(problem,  force_repeat = True):  #
     theta_dict = {}
 
     for seq_name, bins in seq_dict.items():
-        theta_dict[seq_name] = bins/N
+        theta_dict[seq_name] = bins / N
 
-    seq_frame = pandas.DataFrame.from_dict(seq_dict, orient = "index")
-    theta_frame = pandas.DataFrame.from_dict(theta_dict, orient = "index")
+    seq_frame = pandas.DataFrame.from_dict(seq_dict, orient="index")
+    theta_frame = pandas.DataFrame.from_dict(theta_dict, orient="index")
 
-    combined = pandas.concat([seq_frame, theta_frame], axis = 1)
+    combined = pandas.concat([seq_frame, theta_frame], axis=1)
     combined.columns = ["seq_len", "theta"]
     combined.to_csv("processed_reads.csv")
 
@@ -122,42 +127,41 @@ def simulate_reads(problem,  force_repeat = True):  #
     # lengths = np.asarray(lengths_list)
     # psi = length_adjustment(theta_sampled, lengths)
 
-    print("length list: ",lengths_list)
-    
-    print("adj ",lengths)
-    print("psi ",psi)
-    #theta_true= length_adjustment(psi, lengths)
+    print("length list: ", lengths_list)
+
+    print("adj ", lengths)
+    print("psi ", psi)
+    # theta_true= length_adjustment(psi, lengths)
     # print("theta true: ",theta_true)
     # print("theta[0:10] =", theta_true[0:10])
     # print("theta[K-10:K] =", theta_true[T - 10 : T])
 
-    #iso_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
+    # iso_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
-    #bins = np.bincount(iso_sampled, minlength=T)
+    # bins = np.bincount(iso_sampled, minlength=T)
     # theta_sampled = bins/N
-    # theta sampled 
+    # theta sampled
     save_simulation_parameters(problem, psi, theta_sampled, theta_sampled)
     save_lengths(problem.filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
-        for n in range(N): 
+        for n in range(N):
             if (n + 1) % 100000 == 0:
                 print("sim n = ", n + 1)
-            #seq = isoforms[iso_sampled[n]]
+            # seq = isoforms[iso_sampled[n]]
             start = np.random.choice(len(seq) - L + 1)
             out.write(">sim-")
-            #out.write(str(n)+"/"+isoforms_header[iso_sampled[n]][1:])
+            # out.write(str(n)+"/"+isoforms_header[iso_sampled[n]][1:])
             out.write("\n")
             out.write(seq[start : start + L])
             out.write("\n")
     return READS_FILE
 
 
-if __name__ == '__main__': 
-
+if __name__ == "__main__":
     from utils import Problem
-    problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
-    alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True
+
+    problem = Problem(filename="test5.fsa", K=8, N=1000, L=14)
+    alpha = 0.1  # The parameter of the Dirchlet that generates readsforce_repeat = True
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     READS_FILE = simulate_reads(problem)
     print("generated: ", READS_FILE)
-    

@@ -4,8 +4,8 @@ from os import path
 from kmerexpr import fasta
 
 def length_adjustment(psi, lengths):
-    theta = psi*lengths
-    theta = theta/theta.sum()
+    theta = psi * lengths
+    theta = theta / theta.sum()
     return theta
 
 def length_adjustment_inverse(theta, lengths):
@@ -29,12 +29,6 @@ def simulate_reads(problem,  force_repeat = True):  #
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     if path.exists(get_simulation_dir(problem)) and path.exists(READS_FILE) and force_repeat is False:
         return READS_FILE
-    # if path.exists(get_simulation_dir(problem)) and force_repeat is False:
-    #     print("Simulation results for ", problem ," already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
-    # elif path.exists(get_simulation_dir(problem)) is True:
-    #     if path.exists(READS_FILE) and force_repeat is False: # don't repeat if not needed
-    #         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
-    #         return READS_FILE
     isoforms = []
     isoforms_header = []
     lengths_list = []

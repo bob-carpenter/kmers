@@ -17,7 +17,7 @@ def test_k1():
     x = load_npz(X_FILE)
     os.remove(X_FILE)
     M, T = x.get_shape()
-    assert M == 4 ** 1
+    assert M == 4**1
     assert T == 2
     assert x.count_nonzero() == 8
     assert x[0, 0] == 0.25
@@ -38,7 +38,7 @@ def test_k2():
     x = load_npz(X_FILE)
     os.remove(X_FILE)
     M, T = x.get_shape()
-    assert M == 4 ** 2
+    assert M == 4**2
     assert T == 3
     assert x.count_nonzero() == 7
     assert x[0, 0] == pytest.approx(1.0 / 3.0, 1e-6)
