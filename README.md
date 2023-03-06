@@ -68,7 +68,7 @@ isoform file.
 
 Executing
 ```console
-> python3 download_data.py
+> python3 get_data/download_data.py
 ```
 will download the latest version (as of 10th of April 2022) into the `/data` directory.
 

@@ -7,7 +7,6 @@ from typing import Any
 from dataclasses import dataclass, asdict
 from kmerexpr import multinomial_model as mm
 from kmerexpr import multinomial_simplex_model as msm
-from kmerexpr import normal_model as mnm
 import hashlib
 
 @dataclass(frozen=True)
@@ -35,21 +34,15 @@ class Model_Parameters:
     lrs: Any = None    # options for line search 
     init_iterates: str = "uniform" #options for initialize iterates
     joker: Any = False
-    # n_iters: int =2000
-    # tol: float=1e-20 
-    # gtol: float=1e-20
-    # Hessinv = False
 
     def __post_init__(self):
         if self.solver_name != "frank_wolfe" and self.solver_name != "exp_grad":
             print("No solver called", self.solver_name, ". Defaulting to exp_grad" )
             self.solver_name ="exp_grad"
         
-    def initialize_model(self, X_FILE, Y_FILE,  lengths):
+    def initialize_model(self, X_FILE, Y_FILE,  lengths=None):
         if(self.model_type == "softmax"):
             model_class = mm.multinomial_model
-        elif(self.model_type == "normal"):
-            model_class = mnm.normal_model
         else:
             model_class = msm.multinomial_simplex_model
         return model_class(X_FILE, Y_FILE, beta = self.beta, lengths = lengths, solver_name = self.solver_name)

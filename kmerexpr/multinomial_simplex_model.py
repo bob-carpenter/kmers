@@ -3,7 +3,6 @@ from scipy.sparse.linalg import lsqr
 from scipy import optimize
 from kmerexpr.exp_grad_solver import exp_grad_solver
 from scipy.special import softmax as softmax
-from kmerexpr.frank_wolfe import frank_wolfe_solver
 from kmerexpr.rna_seq_reader import load_xy
 
 
@@ -133,17 +132,7 @@ class multinomial_simplex_model:
             else:
                 theta0 = self.initialize_iterates_uniform()
  
-        if self.solver_name=="frank_wolfe":
-            def logp_grad(theta, nograd = False):
-                if nograd:
-                    return -self.logp_grad(theta, nograd = nograd)
-                else:
-                    f, g = self.logp_grad(theta)
-                    return (-f, -g)
-            theta0 = 0.5*theta0   #Start in interior of simplex
-            dict_sol = frank_wolfe_solver(logp_grad, theta0, lrs =model_parameters.lrs, tol = tol, gtol=gtol, n_iters = n_iters,   n = self.M, away_step = model_parameters.joker)
-        else: 
-            self.solver_name=="exp_grad"
-            dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs=model_parameters.lrs, tol=tol, gtol=gtol, n_iters=n_iters, hess_inv=hess_inv)
+        self.solver_name=="exp_grad"
+        dict_sol = exp_grad_solver(self.logp_grad, theta0, lrs=model_parameters.lrs, tol=tol, gtol=gtol, n_iters=n_iters, hess_inv=hess_inv)
             
         return dict_sol

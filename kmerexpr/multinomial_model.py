@@ -118,7 +118,6 @@ class multinomial_model:
         assert y_rows == x_rows
         assert theta_rows == x_cols
 
-        # import pdb; pdb.set_trace()
         ymask = y.nonzero()
         ynnz = y[ymask] 
         sig = softmax(theta)
@@ -138,8 +137,6 @@ class multinomial_model:
         theta -- simplex of expected isoform proportions
         """
         sig = softmax(theta)
-        # xTsig = x.dot(sig)
-        # xTsignnz = xTsig[ymask]
         xTsignnz= self.xnnz.dot(sig) 
         t_3 = (self.xnnz.T).dot(self.ynnz / xTsignnz)
         functionValue = self.ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) *self.beta)
@@ -163,6 +160,5 @@ class multinomial_model:
             print("Total iterations: ", str(dict_flags_convergence['nit']))
         elif dict_flags_convergence['warnflag'] == 2: 
             print("WARNING: softmax model did not converge due to: ",  dict_flags_convergence["task"])
-        # dict_sol["grad"] = -dict_sol["grad"]
         dict_opt = {'x' : softmax(theta_sol), 'loss_records' : -f_sol, 'iteration_counts' : dict_flags_convergence['nit'], 'grad' : -dict_flags_convergence["grad"]}  
         return  dict_opt 
