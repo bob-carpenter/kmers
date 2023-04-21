@@ -21,8 +21,21 @@
 import numpy as np
 from scipy.special import softmax as softmax
 from scipy import optimize
+from sparse_dot_mkl import dot_product_mkl
+from numba import njit, prange
+
 import time
 from kmerexpr.rna_seq_reader import load_xy
+
+
+@njit(parallel=True)
+def a_dot_logb(a, b):
+    res = 0.0
+    for i in prange(len(a)):
+        res += a[i] * np.log(b[i])
+
+    return res
+
 
 # BMW: Class names are usually done in CamelCase style
 class multinomial_model:
@@ -67,7 +80,7 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver_name = 'lbfgs'): 
+    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver_name = 'lbfgs'):
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -80,6 +93,7 @@ class multinomial_model:
         self.ymask = y.nonzero() # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
         self.xnnz = x[self.ymask]
+        self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
         self.N = np.sum(y)
         self.name = "softmax"
         x_dim = x.shape
@@ -145,6 +159,23 @@ class multinomial_model:
         functionValue = self.ynnz.dot(np.log(xTsignnz)) - (theta.dot(theta) *self.beta)
         gradient = t_3 * sig - self.N * sig - (2 *self.beta) * theta
         return functionValue, gradient
+
+
+    def logp_grad_fast(self, theta):
+        """Return log density and its gradient evaluated at the
+        specified simplex.
+
+        Keyword arguments:
+        theta -- simplex of expected isoform proportions
+        """
+        sig = softmax(theta)
+        self.scratch[:] = 0.
+        dot_product_mkl(self.xnnz, sig, out=self.scratch)
+        val = a_dot_logb(self.ynnz, self.scratch) - self.beta * (theta @ theta)
+
+        np.divide(self.ynnz, self.scratch, out=self.scratch)
+        grad = dot_product_mkl(self.scratch, self.xnnz) * sig - self.N * sig - (2 * self.beta) * theta
+        return val, grad
 
 
     def fit(self, model_parameters, theta0=None, factr=1.0, gtol=1e-12, tol=None, n_iters = 50000):
