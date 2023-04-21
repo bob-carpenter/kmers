@@ -83,3 +83,100 @@ def transcriptome_to_x(
     xt = csr_matrix((data, (row_ind, col_ind)), shape=(M, n), dtype=float_t)
     print("saving csr matrix to file = ", x_file)
     save_npz(x_file, xt)
+
+
+def transcriptome_to_x_fast(
+        K,
+        fasta_file,
+        x_file,
+        L=None,
+        max_nz=500 * 1000 * 1000,
+        float_t=np.float32,
+        int_t=np.int32,
+):
+    if L is not None:
+        raise ValueError("Only L=None currently supported for fast reader")
+    if float_t != np.float32:
+        raise ValueError("Only float_t=np.float32 currently supported for fast reader")
+    if int_t != np.int32:
+        raise ValueError("Only int_t=np.int32 currently supported for fast reader")
+    print("K =", K)
+    print("fasta file =", fasta_file)
+    print("target x file =", x_file)
+    print("float type =", float_t)
+    print("int type =", int_t)
+    M = 4**K
+    print("M =", M)
+
+    from ctypes import CDLL, POINTER, c_float, c_int, c_char_p, byref
+    from ctypes.util import find_library
+
+    libkmers_path = find_library('kmers')
+
+    if not libkmers_path:
+        import os
+        from sys import platform
+        libroot = os.path.sep.join(os.path.realpath(__file__).split(os.path.sep)[:-5])
+        if platform == 'linux':
+            extension = ".so"
+        elif platform == 'darwin':
+            extension = ".dylib"
+        elif platform == 'win32':
+            extension = '.dll'
+        else:
+            raise RuntimeError("Invalid operating platform found.")
+        lib = os.path.join(libroot, "lib", "libkmers" + extension)
+        lib64 = os.path.join(libroot, "lib64", "libkmers" + extension)
+        if os.path.exists(lib):
+            libkmers_path = lib
+        elif os.path.exists(lib64):
+            libkmers_path = lib64
+
+    if not libkmers_path:
+        raise OSError(f"Unable to find 'libkmers'. Add libkmers.{extension}"
+                      "path to LD_LIBRARY_PATH (or other relevant) variable")
+
+    libkmers = CDLL(libkmers_path)
+
+    func = libkmers.fasta_to_kmers_sparse
+    func.restype = c_int
+    func.argtypes = [
+        c_char_p,
+        c_int,
+        POINTER(c_float),
+        POINTER(c_int),
+        POINTER(c_int),
+        c_int,
+        POINTER(c_int),
+        POINTER(c_int),
+    ]
+
+    data = np.zeros(max_nz, dtype=float_t)
+    row_ind = np.zeros(max_nz, dtype=int_t)
+    col_ind = np.zeros(max_nz, dtype=int_t)
+    pos = c_int(0)
+    n_cols = c_int(0)
+
+    res = func(fasta_file.encode('UTF-8'),
+               K,
+               data.ctypes.data_as(POINTER(c_float)),
+               row_ind.ctypes.data_as(POINTER(c_int)),
+               col_ind.ctypes.data_as(POINTER(c_int)),
+               max_nz,
+               byref(pos),
+               byref(n_cols),
+               )
+    pos = pos.value
+    n_cols = n_cols.value
+
+    if res != 0:
+        raise RuntimeError("max_nz insufficient to load fasta file")
+
+    print("trimming triplets")
+    data.resize(pos)
+    row_ind.resize(pos)
+    col_ind.resize(pos)
+    print("building csr_matrix")
+    xt = csr_matrix((data, (row_ind, col_ind)), shape=(M, n_cols), dtype=float_t)
+    print("saving csr matrix to file = ", x_file)
+    save_npz(x_file, xt)
