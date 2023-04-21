@@ -85,6 +85,39 @@ def transcriptome_to_x(
     save_npz(x_file, xt)
 
 
+def _get_libkmers_handle():
+    from ctypes import CDLL, POINTER, c_float, c_int, c_char_p, byref
+    from ctypes.util import find_library
+
+    libkmers_path = find_library('kmers')
+    if not libkmers_path:
+        import sys, os
+        if sys.base_prefix != sys.prefix:  # in venv, use that as root
+            libroot = sys.prefix
+        else:  # take path relative to this script and hope for the best
+            libroot = os.path.sep.join(os.path.realpath(__file__).split(os.path.sep)[:-5])
+
+        if sys.platform == 'linux':
+            extension = ".so"
+        elif sys.platform == 'darwin':
+            extension = ".dylib"
+        elif sys.platform == 'win32':
+            extension = '.dll'
+        else:
+            raise RuntimeError("Invalid operating platform found.")
+        lib = os.path.join(libroot, "lib", f"libkmers{extension}")
+        lib64 = os.path.join(libroot, "lib64", f"libkmers{extension}")
+        if os.path.exists(lib):
+            libkmers_path = lib
+        elif os.path.exists(lib64):
+            libkmers_path = lib64
+
+    if not libkmers_path:
+        raise OSError("Unable to find 'libkmers' library")
+
+    return CDLL(libkmers_path)
+
+
 def transcriptome_to_x_fast(
         K,
         fasta_file,
@@ -108,36 +141,7 @@ def transcriptome_to_x_fast(
     M = 4**K
     print("M =", M)
 
-    from ctypes import CDLL, POINTER, c_float, c_int, c_char_p, byref
-    from ctypes.util import find_library
-
-    libkmers_path = find_library('kmers')
-
-    if not libkmers_path:
-        import os
-        from sys import platform
-        libroot = os.path.sep.join(os.path.realpath(__file__).split(os.path.sep)[:-5])
-        if platform == 'linux':
-            extension = ".so"
-        elif platform == 'darwin':
-            extension = ".dylib"
-        elif platform == 'win32':
-            extension = '.dll'
-        else:
-            raise RuntimeError("Invalid operating platform found.")
-        lib = os.path.join(libroot, "lib", "libkmers" + extension)
-        lib64 = os.path.join(libroot, "lib64", "libkmers" + extension)
-        if os.path.exists(lib):
-            libkmers_path = lib
-        elif os.path.exists(lib64):
-            libkmers_path = lib64
-
-    if not libkmers_path:
-        raise OSError(f"Unable to find 'libkmers'. Add libkmers.{extension}"
-                      "path to LD_LIBRARY_PATH (or other relevant) variable")
-
-    libkmers = CDLL(libkmers_path)
-
+    libkmers = _get_libkmers_handle()
     func = libkmers.fasta_to_kmers_sparse
     func.restype = c_int
     func.argtypes = [
@@ -157,19 +161,19 @@ def transcriptome_to_x_fast(
     pos = c_int(0)
     n_cols = c_int(0)
 
-    res = func(fasta_file.encode('UTF-8'),
-               K,
-               data.ctypes.data_as(POINTER(c_float)),
-               row_ind.ctypes.data_as(POINTER(c_int)),
-               col_ind.ctypes.data_as(POINTER(c_int)),
-               max_nz,
-               byref(pos),
-               byref(n_cols),
-               )
+    failed = func(fasta_file.encode('UTF-8'),
+                  K,
+                  data.ctypes.data_as(POINTER(c_float)),
+                  row_ind.ctypes.data_as(POINTER(c_int)),
+                  col_ind.ctypes.data_as(POINTER(c_int)),
+                  max_nz,
+                  byref(pos),
+                  byref(n_cols),
+                  )
     pos = pos.value
     n_cols = n_cols.value
 
-    if res != 0:
+    if failed:
         raise RuntimeError("max_nz insufficient to load fasta file")
 
     print("trimming triplets")
