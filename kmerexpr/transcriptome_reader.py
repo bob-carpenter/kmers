@@ -104,7 +104,7 @@ def _get_libkmers_handle():
         elif sys.platform == 'win32':
             extension = '.dll'
         else:
-            raise RuntimeError("Invalid operating platform found.")
+            raise ImportError("Invalid operating platform found in 'libkmers' search")
         lib = os.path.join(libroot, "lib", f"libkmers{extension}")
         lib64 = os.path.join(libroot, "lib64", f"libkmers{extension}")
         if os.path.exists(lib):
@@ -113,7 +113,7 @@ def _get_libkmers_handle():
             libkmers_path = lib64
 
     if not libkmers_path:
-        raise OSError("Unable to find 'libkmers' library")
+        raise ImportError("Unable to find 'libkmers' shared object")
 
     return CDLL(libkmers_path)
 
