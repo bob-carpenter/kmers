@@ -84,7 +84,7 @@ def get_path_prefix_surfix(name, N, L):
     ROOT = os.path.dirname(HERE)
     DATA_PATH = os.path.join(HERE, "..", "data")
     ISO_FILE = os.path.join(DATA_PATH, name)
-    name_no_dot = name.replace(".", "-" )
+    name_no_dot = name.replace(".", "-")
     prefix = os.path.join(DATA_PATH, "model/")
     if not os.path.exists(prefix):
         os.makedirs(prefix)
@@ -182,6 +182,7 @@ def get_errors(xs, theta_true):
     for x in xs:
         errors.append(np.linalg.norm(x - theta_true, ord=1))
     return errors
+
 
 # from haven-ai
 def hash_dict(dictionary):

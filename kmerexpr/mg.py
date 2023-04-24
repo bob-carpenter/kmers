@@ -7,13 +7,7 @@ from numpy.linalg import norm
 from kmerexpr.exp_grad_solver import update_records
 
 
-
-def mg(logp_grad,
-    param,
-    tol=10 ** (-20.0),
-    max_iter=2000,
-    callback=None
-    ):
+def mg(logp_grad, param, tol=10 ** (-20.0), max_iter=2000, callback=None):
     """The Multiplicative Gradient algorithm."""
     num_steps_between_snapshot = np.maximum(int(max_iter / 15), 1)
     obj_init, grad_init = logp_grad(param)
@@ -23,13 +17,15 @@ def mg(logp_grad,
     loss_records = []
     xs = []
     iteration_counts = []
-    import pdb; pdb.set_trace()
+    import pdb
+
+    pdb.set_trace()
     for t in range(max_iter):
         # Update theta = theta . grad
         param = param * grad
-        param = param/np.sum(param)
+        param = param / np.sum(param)
         obj, grad = logp_grad(param)
-        
+
         if callback is not None:
             callback(param, None)
 
@@ -56,7 +52,7 @@ def mg(logp_grad,
         "norm_records": norm_records,
         "loss_records": loss_records,
         "iteration_counts": iteration_counts,
-        "xs": xs
+        "xs": xs,
     }
 
     return dict_out

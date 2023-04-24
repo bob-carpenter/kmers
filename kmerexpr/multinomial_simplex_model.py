@@ -130,7 +130,15 @@ class multinomial_simplex_model:
         theta0 = theta0 / theta0.sum()
         return theta0
 
-    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters=100, opt_method = 'mg'):
+    def fit(
+        self,
+        model_parameters,
+        theta0=None,
+        tol=1e-20,
+        gtol=1e-20,
+        n_iters=100,
+        opt_method="mg",
+    ):
         if theta0 is None:  # initialize to uniform
             if model_parameters.init_iterates == "lsq":
                 theta0 = self.initialize_iterates_lsq()
@@ -139,11 +147,8 @@ class multinomial_simplex_model:
             else:
                 theta0 = self.initialize_iterates_uniform()
 
-        if opt_method == 'mg':
-            dict_sol = mg(self.logp_grad,
-                theta0, 
-                tol=tol, 
-                max_iter=n_iters)
+        if opt_method == "mg":
+            dict_sol = mg(self.logp_grad, theta0, tol=tol, max_iter=n_iters)
         else:
             dict_sol = exp_grad_solver(
                 self.logp_grad,
