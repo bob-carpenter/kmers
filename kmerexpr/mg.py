@@ -17,13 +17,12 @@ def mg(logp_grad, param, tol=10 ** (-20.0), max_iter=2000, callback=None):
     loss_records = []
     xs = []
     iteration_counts = []
-    import pdb
 
-    pdb.set_trace()
     for t in range(max_iter):
-        # Update theta = theta . grad
+        # Update theta = theta . grad/sum(theta . grad)
         param = param * grad
         param = param / np.sum(param)
+
         obj, grad = logp_grad(param)
 
         if callback is not None:
