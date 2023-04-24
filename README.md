@@ -19,6 +19,10 @@ run:
 ```
 pip install -r requirements.txt
 ```
+To run the simplest test, run
+```
+python3 scripts/simple_example.py
+```
 
 ### Setup a virtual environment
 Create a [Python 3 virtual environment](https://docs.python.org/3/tutorial/venv.html).

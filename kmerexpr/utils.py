@@ -183,7 +183,6 @@ def get_errors(xs, theta_true):
         errors.append(np.linalg.norm(x - theta_true, ord=1))
     return errors
 
-
 # from haven-ai
 def hash_dict(dictionary):
     """Create a hash for a dictionary."""

@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse.linalg import lsqr
 from scipy import optimize
 from kmerexpr.exp_grad_solver import exp_grad_solver
+from kmerexpr.mg import mg
 from scipy.special import softmax as softmax
 from kmerexpr.rna_seq_reader import load_xy
 
@@ -129,7 +130,7 @@ class multinomial_simplex_model:
         theta0 = theta0 / theta0.sum()
         return theta0
 
-    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters=100):
+    def fit(self, model_parameters, theta0=None, tol=1e-20, gtol=1e-20, n_iters=100, opt_method = 'mg'):
         if theta0 is None:  # initialize to uniform
             if model_parameters.init_iterates == "lsq":
                 theta0 = self.initialize_iterates_lsq()
@@ -138,13 +139,19 @@ class multinomial_simplex_model:
             else:
                 theta0 = self.initialize_iterates_uniform()
 
-        dict_sol = exp_grad_solver(
-            self.logp_grad,
-            theta0,
-            lrs=model_parameters.lrs,
-            tol=tol,
-            gtol=gtol,
-            n_iters=n_iters,
-        )
+        if opt_method == 'mg':
+            dict_sol = mg(self.logp_grad,
+                theta0, 
+                tol=tol, 
+                max_iter=n_iters)
+        else:
+            dict_sol = exp_grad_solver(
+                self.logp_grad,
+                theta0,
+                lrs=model_parameters.lrs,
+                tol=tol,
+                gtol=gtol,
+                n_iters=n_iters,
+            )
 
         return dict_sol
