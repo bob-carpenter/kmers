@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -77,8 +79,8 @@ std::pair<std::string, std::string> get_next_sequence(std::iostream &stream) {
 }
 
 extern "C" {
-int fasta_to_kmers_sparse(const char *fname, int K, float *data, int *row_ind, int *col_ind, int max_size,
-                          int *n_elements, int *n_cols) {
+int fasta_to_kmers_sparse(const char *fname, int K, float *data, int *row_ind, int *col_ind, int *total_kmer_counts,
+                          int max_size, int *n_elements, int *n_cols) {
     std::fstream stream;
     stream.open(fname, std::ios::in);
     if (!stream)
@@ -102,6 +104,7 @@ int fasta_to_kmers_sparse(const char *fname, int K, float *data, int *row_ind, i
 
             row_ind[pos] = kmer;
             col_ind[pos] = seqid;
+            total_kmer_counts[kmer]++;
             pos++;
         }
 

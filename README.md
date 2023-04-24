@@ -19,6 +19,10 @@ run:
 ```
 pip install -r requirements.txt
 ```
+To run the simplest test, run
+```
+python3 scripts/simple_example.py
+```
 
 ### Setup a virtual environment
 Create a [Python 3 virtual environment](https://docs.python.org/3/tutorial/venv.html).
@@ -68,7 +72,7 @@ isoform file.
 
 Executing
 ```console
-> python3 download_data.py
+> python3 get_data/download_data.py
 ```
 will download the latest version (as of 10th of April 2022) into the `/data` directory.
 

@@ -3,17 +3,20 @@ from kmerexpr.utils import save_simulation_parameters, save_lengths, get_simulat
 from os import path
 from kmerexpr import fasta
 
+
 def length_adjustment(psi, lengths):
-    theta = psi*lengths
-    theta = theta/theta.sum()
+    theta = psi * lengths
+    theta = theta / theta.sum()
     return theta
 
+
 def length_adjustment_inverse(theta, lengths):
-    psi = theta/lengths
-    psi = psi/psi.sum()
+    psi = theta / lengths
+    psi = psi / psi.sum()
     return psi
 
-def simulate_reads(problem,  force_repeat = True):  #
+
+def simulate_reads(problem, force_repeat=True):  #
     np.random.seed(42)
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
@@ -27,14 +30,12 @@ def simulate_reads(problem,  force_repeat = True):  #
     problem.alpha = parameter of Dirchlet distribution that generates psi
     """
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
-    if path.exists(get_simulation_dir(problem)) and path.exists(READS_FILE) and force_repeat is False:
+    if (
+        path.exists(get_simulation_dir(problem))
+        and path.exists(READS_FILE)
+        and force_repeat is False
+    ):
         return READS_FILE
-    # if path.exists(get_simulation_dir(problem)) and force_repeat is False:
-    #     print("Simulation results for ", problem ," already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
-    # elif path.exists(get_simulation_dir(problem)) is True:
-    #     if path.exists(READS_FILE) and force_repeat is False: # don't repeat if not needed
-    #         print("file ", READS_FILE, " already exists. To re-compute, pass the argument force_repeat = true in simulate_reads" )
-    #         return READS_FILE
     isoforms = []
     isoforms_header = []
     lengths_list = []
@@ -53,24 +54,24 @@ def simulate_reads(problem,  force_repeat = True):  #
                 print("sim seqs read = ", pos)
             isoforms.append(seq)
             isoforms_header.append(s.header)
-            lengths_list.append(len(seq)-L+1)
+            lengths_list.append(len(seq) - L + 1)
             pos += 1
     T = len(isoforms)
     print("isoforms found = ", T)
-    alphas = problem.alpha*np.ones(T)
-    psi= np.random.dirichlet(alphas)
-    print("length list: ",lengths_list)
+    alphas = problem.alpha * np.ones(T)
+    psi = np.random.dirichlet(alphas)
+    print("length list: ", lengths_list)
     lengths = np.asarray(lengths_list)
-    print("adj ",lengths)
-    print("psi ",psi)
-    theta_true= length_adjustment(psi, lengths)
-    print("theta true: ",theta_true)
+    print("adj ", lengths)
+    print("psi ", psi)
+    theta_true = length_adjustment(psi, lengths)
+    print("theta true: ", theta_true)
     print("theta[0:10] =", theta_true[0:10])
     print("theta[K-10:K] =", theta_true[T - 10 : T])
     iso_sampled = np.random.choice(T, size=N, replace=True, p=theta_true)
     # bins, bin_edges = np.histogram(y_sampled, bins=np.arange(T+1) )
     bins = np.bincount(iso_sampled, minlength=T)
-    theta_sampled = bins/N
+    theta_sampled = bins / N
     save_simulation_parameters(problem, psi, theta_true, theta_sampled)
     save_lengths(problem.filename, N, L, lengths)
     with open(READS_FILE, "w") as out:
@@ -80,19 +81,18 @@ def simulate_reads(problem,  force_repeat = True):  #
             seq = isoforms[iso_sampled[n]]
             start = np.random.choice(len(seq) - L + 1)
             out.write(">sim-")
-            out.write(str(n)+"/"+isoforms_header[iso_sampled[n]][1:])
+            out.write(str(n) + "/" + isoforms_header[iso_sampled[n]][1:])
             out.write("\n")
             out.write(seq[start : start + L])
             out.write("\n")
     return READS_FILE
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     from utils import Problem
-    problem = Problem(filename="test5.fsa", K=8, N =1000, L=14)
-    alpha = 0.1  #The parameter of the Dirchlet that generates readsforce_repeat = True
+
+    problem = Problem(filename="test5.fsa", K=8, N=1000, L=14)
+    alpha = 0.1  # The parameter of the Dirchlet that generates readsforce_repeat = True
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     READS_FILE = simulate_reads(problem)
     print("generated: ", READS_FILE)
-

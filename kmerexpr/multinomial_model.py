@@ -21,33 +21,8 @@
 import numpy as np
 from scipy.special import softmax as softmax
 from scipy import optimize
-from sparse_dot_mkl import dot_product_mkl
-from numba import njit, prange
-
 import time
-from kmerexpr.rna_seq_reader import load_xy
-
-
-@njit(parallel=True)
-def _a_dot_logb(a, b):
-    res = 0.0
-    for i in prange(len(a)):
-        res += a[i] * np.log(b[i])
-
-    return res
-
-
-@njit(parallel=True)
-def _zero(arr):
-    for i in prange(len(arr)):
-        arr[i] = 0.
-
-
-@njit(parallel=True)
-def _divide(a, b, c):
-    for i in prange(len(a)):
-        c[i] = a[i] / b[i]
-
+from kmerexpr.transcriptome_reader import load_xy
 
 # BMW: Class names are usually done in CamelCase style
 class multinomial_model:
@@ -92,7 +67,7 @@ class multinomial_model:
     :param y: vector of read counts
     """
 
-    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver_name = 'lbfgs'):
+    def __init__(self, x_file=None, y_file=None, beta =1/18, lengths = None, solver_name = 'lbfgs'): 
         """Construct a multinomial model.
 
         Keyword arguments:
@@ -105,7 +80,6 @@ class multinomial_model:
         self.ymask = y.nonzero() # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
         self.xnnz = x[self.ymask]
-        self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
         self.N = np.sum(y)
         self.name = "softmax"
         x_dim = x.shape
@@ -144,6 +118,7 @@ class multinomial_model:
         assert y_rows == x_rows
         assert theta_rows == x_cols
 
+        # import pdb; pdb.set_trace()
         ymask = y.nonzero()
         ynnz = y[ymask] 
         sig = softmax(theta)
@@ -172,44 +147,22 @@ class multinomial_model:
         return functionValue, gradient
 
 
-    def logp_grad_fast(self, theta):
-        """Return log density and its gradient evaluated at the
-        specified simplex.
+    def fit(self, model_parameters, theta0=None, factr=1.0, gtol=1e-12, tol=None, n_iters = 50000):
 
-        Keyword arguments:
-        theta -- simplex of expected isoform proportions
-        """
-        sig = softmax(theta).astype(np.float32)
-        _zero(self.scratch)
-        dot_product_mkl(self.xnnz, sig, out=self.scratch)
-        val = _a_dot_logb(self.ynnz, self.scratch) - self.beta * (theta @ theta)
+        if theta0 is None:  #initialize to normal 0 1
+            theta0 = np.random.normal(0, 1, self.T) 
 
-        _divide(self.ynnz, self.scratch, self.scratch)
-        grad = dot_product_mkl(self.scratch, self.xnnz) * sig - self.N * sig - (2 * self.beta) * theta
-        return val, grad
-
-
-    def fit(self, model_parameters, theta0=None, factr=1.0, gtol=1e-12, tol=None, n_iters=50000):
-        if theta0 is None:
-            theta0 = np.random.normal(0, 1, self.T).astype(np.float32)
-
-        func = lambda theta: tuple(-res for res in self.logp_grad_fast(theta))
+        func = lambda theta: -self.logp_grad(theta)[0]
+        fprime = lambda theta: -self.logp_grad(theta)[1]
         start = time.time()
-        theta_sol, f_sol, dict_flags_convergence = \
-            optimize.fmin_l_bfgs_b(func, theta0, pgtol=gtol, factr=factr, maxiter=n_iters, maxfun=10*n_iters)
+        theta_sol, f_sol, dict_flags_convergence = optimize.fmin_l_bfgs_b(func, theta0, fprime, pgtol = gtol, factr = factr, maxiter=n_iters, maxfun = 10*n_iters)
         end = time.time()
         print("softmax model took ", end - start, " time to fit")
-
         if dict_flags_convergence['warnflag'] == 1:
-            print("WARNING: softmax model did not converge. too many function evaluations or too many iterations. Print d[task]:",
-                  dict_flags_convergence["task"])
+            print("WARNING: softmax model did not converge. too many function evaluations or too many iterations. Print d[task]:", dict_flags_convergence["task"])
             print("Total iterations: ", str(dict_flags_convergence['nit']))
         elif dict_flags_convergence['warnflag'] == 2: 
             print("WARNING: softmax model did not converge due to: ",  dict_flags_convergence["task"])
         # dict_sol["grad"] = -dict_sol["grad"]
-        dict_opt = {'x' : softmax(theta_sol),
-                    'loss_records' : -f_sol,
-                    'iteration_counts' : dict_flags_convergence['nit'],
-                    'grad' : -dict_flags_convergence["grad"]}
-
-        return  dict_opt
+        dict_opt = {'x' : softmax(theta_sol), 'loss_records' : -f_sol, 'iteration_counts' : dict_flags_convergence['nit'], 'grad' : -dict_flags_convergence["grad"]}  
+        return  dict_opt 
