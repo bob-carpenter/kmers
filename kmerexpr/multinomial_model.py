@@ -29,12 +29,24 @@ from kmerexpr.rna_seq_reader import load_xy
 
 
 @njit(parallel=True)
-def a_dot_logb(a, b):
+def _a_dot_logb(a, b):
     res = 0.0
     for i in prange(len(a)):
         res += a[i] * np.log(b[i])
 
     return res
+
+
+@njit(parallel=True)
+def _zero(arr):
+    for i in prange(len(arr)):
+        arr[i] = 0.
+
+
+@njit(parallel=True)
+def _divide(a, b, c):
+    for i in prange(len(a)):
+        c[i] = a[i] / b[i]
 
 
 # BMW: Class names are usually done in CamelCase style
@@ -169,11 +181,11 @@ class multinomial_model:
         theta -- simplex of expected isoform proportions
         """
         sig = softmax(theta)
-        self.scratch[:] = 0.
+        _zero(self.scratch)
         dot_product_mkl(self.xnnz, sig, out=self.scratch)
-        val = a_dot_logb(self.ynnz, self.scratch) - self.beta * (theta @ theta)
+        val = _a_dot_logb(self.ynnz, self.scratch) - self.beta * (theta @ theta)
 
-        np.divide(self.ynnz, self.scratch, out=self.scratch)
+        _divide(self.ynnz, self.scratch, self.scratch)
         grad = dot_product_mkl(self.scratch, self.xnnz) * sig - self.N * sig - (2 * self.beta) * theta
         return val, grad
 
@@ -196,4 +208,4 @@ class multinomial_model:
             print("WARNING: softmax model did not converge due to: ",  dict_flags_convergence["task"])
         # dict_sol["grad"] = -dict_sol["grad"]
         dict_opt = {'x' : softmax(theta_sol), 'loss_records' : -f_sol, 'iteration_counts' : dict_flags_convergence['nit'], 'grad' : -dict_flags_convergence["grad"]}  
-        return  dict_opt 
+        return  dict_opt
