@@ -4,7 +4,8 @@ from kmerexpr.transcriptome_reader import valid_kmer, shred, kmer_to_id
 from kmerexpr import fasta
 from scipy.sparse import load_npz, save_npz, coo_matrix
 
-def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None):
+
+def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE=None):
     print("K =", K)
     print("fasta file =", READS_FILE)
     print("float type =", float_t)
@@ -21,7 +22,7 @@ def reads_to_y(K, READS_FILE, float_t=np.float32, int_t=np.int32, Y_FILE = None)
             iter = shred(seq.sequence, K)
             iter_filtered = filter(valid_kmer, iter)
             kmer_counts = Counter(iter_filtered)
-            for (kmer, count) in kmer_counts.items():
+            for kmer, count in kmer_counts.items():
                 id = kmer_to_id(kmer)
                 y[id] += count
             n += 1

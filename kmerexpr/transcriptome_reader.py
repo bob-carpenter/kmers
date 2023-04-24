@@ -47,7 +47,7 @@ def transcriptome_to_x(
     print("target x file =", x_file)
     print("float type =", float_t)
     print("int type =", int_t)
-    M = 4 ** K
+    M = 4**K
     print("M =", M)
     with open(fasta_file) as f:
         parser = fasta.read_fasta(f)
@@ -69,7 +69,7 @@ def transcriptome_to_x(
             iter_filtered = filter(valid_kmer, iter)
             kmer_counts = Counter(iter_filtered)
             total_count = sum(kmer_counts.values())
-            for (kmer, count) in kmer_counts.items():
+            for kmer, count in kmer_counts.items():
                 data[pos] = float_t(count / total_count)
                 row_ind[pos] = int_t(kmer_to_id(kmer))
                 col_ind[pos] = int_t(n)

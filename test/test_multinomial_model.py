@@ -17,7 +17,7 @@ def test1():
     X_FILE = os.path.join(DATA_PATH, "x4_csr.npz")
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
-    y_test = np.random.poisson(5, 4 ** K)
+    y_test = np.random.poisson(5, 4**K)
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
     assert model.T == 3
@@ -25,16 +25,17 @@ def test1():
     theta_test = np.random.normal(0, 1, model.T)
     check_gradient(model, theta_test)
 
+
 @pytest.mark.slow
 def test_human_transcriptome():
     ISO_FILE = os.path.join(ROOT, "data", "GRCh38_latest_rna.fna")
     X_FILE = os.path.join(DATA_PATH, "xgrch38_csr.npz")
     K = 3  # make = 10 for full test
-    M = 4 ** K
+    M = 4**K
     T = 81456  # Rob: It's coming out at 81456 in my test. It was 80791 before
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
     print("finished writing x to file")
-    y_test = np.random.poisson(20, 4 ** K)
+    y_test = np.random.poisson(20, 4**K)
     print("reading in model")
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
@@ -51,7 +52,7 @@ def test_optimizer():
     print(X_FILE)
     K = 2
     tr.transcriptome_to_x(K, ISO_FILE, X_FILE)
-    y_test = np.random.poisson(5, 4 ** K)
+    y_test = np.random.poisson(5, 4**K)
     model = mm.multinomial_model(X_FILE, y_test)
     os.remove(X_FILE)
     theta0 = np.random.normal(0, 1, model.T)
@@ -63,6 +64,10 @@ def test_optimizer():
     CGResult = optimize.minimize(
         func, theta0, method="CG", jac=fprime, options={"gtol": 1e-16}
     )
-    assert np.linalg.norm(softmax(CGResult.x) - dict_sol["x"])/np.linalg.norm(dict_sol["x"]) < 1e-04
+    assert (
+        np.linalg.norm(softmax(CGResult.x) - dict_sol["x"])
+        / np.linalg.norm(dict_sol["x"])
+        < 1e-04
+    )
     assert np.linalg.norm(CGResult.jac - dict_sol["grad"]) < 1e-03
     assert np.linalg.norm(dict_sol["grad"]) < 1e-03
