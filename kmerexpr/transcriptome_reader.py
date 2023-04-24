@@ -143,6 +143,7 @@ def transcriptome_to_x_fast(
 
     libkmers = _get_libkmers_handle()
     func = libkmers.fasta_to_kmers_sparse
+    from ctypes import POINTER, c_float, c_int, c_char_p, byref
     func.restype = c_int
     func.argtypes = [
         c_char_p,
@@ -177,9 +178,9 @@ def transcriptome_to_x_fast(
         raise RuntimeError("max_nz insufficient to load fasta file")
 
     print("trimming triplets")
-    data.resize(pos)
-    row_ind.resize(pos)
-    col_ind.resize(pos)
+    data = data[0:pos]
+    row_ind = row_ind[0:pos]
+    col_ind = col_ind[0:pos]
     print("building csr_matrix")
     xt = csr_matrix((data, (row_ind, col_ind)), shape=(M, n_cols), dtype=float_t)
     print("saving csr matrix to file = ", x_file)
