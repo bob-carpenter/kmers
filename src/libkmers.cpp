@@ -1,3 +1,5 @@
+#include "libkmers.h"
+
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -15,6 +17,8 @@
 
 class ThreadPool {
   public:
+    ThreadPool() { Start(); }
+
     void Start() {
         const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
         threads.resize(num_threads);
@@ -39,14 +43,6 @@ class ThreadPool {
         }
         threads.clear();
     };
-    bool busy() {
-        bool poolbusy;
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            poolbusy = jobs.empty();
-        }
-        return poolbusy;
-    }
 
   private:
     void ThreadLoop() {
@@ -86,24 +82,7 @@ std::array<char, 256> init_base_ids() {
 
 static const std::array<char, 256> base_ids = init_base_ids();
 
-uint32_t kmer_to_id(const char *kmer, int len) {
-    uint32_t i = 0;
-    uint32_t id = 0;
-    for (int i = 0; i < len; ++i)
-        id = id * 4 + base_ids[kmer[i]];
-
-    return id;
-}
-
-bool valid_kmer(const char *kmer, int len) {
-    for (int i = 0; i < len; ++i)
-        if (base_ids[kmer[i]] < 0)
-            return false;
-
-    return true;
-}
-
-void atomic_increment(int *arr, size_t index) {
+inline void atomic_increment(int *arr, size_t index) {
     std::atomic_ref<int> el(arr[index]);
     el.fetch_add(1, std::memory_order_relaxed);
 }
@@ -128,21 +107,18 @@ std::unordered_map<uint32_t, uint32_t> collect_kmers(const std::string &sequence
 void fill_indices(int K, int seq_total_count, int seqid, const std::string &sequence, float *data, int *row_ind,
                   int *col_ind, int *total_kmer_counts) {
     const auto kmer_counts = collect_kmers(sequence.data(), K);
-
-    int pos = 0;
+    int i = 0;
     for (auto &[kmer, count] : kmer_counts) {
-        data[pos] = float(count) / seq_total_count;
-
-        row_ind[pos] = kmer;
-        col_ind[pos] = seqid;
+        data[i] = float(count) / seq_total_count;
+        row_ind[i] = kmer;
+        col_ind[i] = seqid;
         atomic_increment(total_kmer_counts, kmer);
-        pos++;
+        i++;
     }
 }
 
 std::pair<std::string, std::string> get_next_sequence(std::iostream &stream) {
     std::string line, header, sequence;
-
     getline(stream, header);
     auto pos = stream.tellg();
     while (getline(stream, line)) {
@@ -159,21 +135,50 @@ std::pair<std::string, std::string> get_next_sequence(std::iostream &stream) {
     return std::make_pair(std::move(header), std::move(sequence));
 }
 
-inline int get_total_count(int L, int K) { return L <= K ? 0 : L - K + 1; }
+inline int max_total_subseq(int L, int K) { return (L < K) ? 0 : L - K + 1; }
+
+int remove_invalid_elements(int nnz, float *data, int *row_ind, int *col_ind) {
+    int last_valid = 0;
+    for (int i = 0; i < nnz; ++i) {
+        if (col_ind[i] != -1) {
+            row_ind[last_valid] = row_ind[i];
+            col_ind[last_valid] = col_ind[i];
+            data[last_valid] = data[i];
+            last_valid++;
+        }
+    }
+    return last_valid;
+}
 
 extern "C" {
+uint32_t kmer_to_id(const char *kmer, int len) {
+    uint32_t i = 0;
+    uint32_t id = 0;
+    for (int i = 0; i < len; ++i)
+        id = id * 4 + base_ids[kmer[i]];
+
+    return id;
+}
+
+bool valid_kmer(const char *kmer, int len) {
+    for (int i = 0; i < len; ++i)
+        if (base_ids[kmer[i]] < 0)
+            return false;
+
+    return true;
+}
+
 int fasta_to_kmers_sparse(const char *fname, int K, float *data, int *row_ind, int *col_ind, int *total_kmer_counts,
                           int max_size, int *n_elements, int *n_cols) {
     std::fstream stream;
     stream.open(fname, std::ios::in);
     if (!stream)
         return -1;
+    std::fill(col_ind, col_ind + max_size, -1);
 
     int seqid = 0;
     int pos = 0;
     ThreadPool pool;
-    pool.Start();
-
     while (true) {
         std::string header, sequence;
         std::tie(header, sequence) = get_next_sequence(stream);
@@ -182,20 +187,18 @@ int fasta_to_kmers_sparse(const char *fname, int K, float *data, int *row_ind, i
         if (header.find("PREDICTED") != std::string::npos)
             continue;
 
-        int seq_total_count = get_total_count(sequence.length(), K);
-        pool.QueueJob([K, seq_total_count, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
-            fill_indices(K, seq_total_count, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
-                         total_kmer_counts);
+        const int n_sub_seq = max_total_subseq(sequence.length(), K);
+        pool.QueueJob([K, n_sub_seq, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
+            fill_indices(K, n_sub_seq, seqid, sequence, data + pos, row_ind + pos, col_ind + pos, total_kmer_counts);
         });
 
-        if (seqid % 10000 == 0)
-            std::cout << seqid << " " << pos << std::endl;
-
-        pos += seq_total_count;
+        pos += n_sub_seq;
         seqid++;
     }
 
     pool.Stop();
+    pos = remove_invalid_elements(pos, data, row_ind, col_ind);
+
     *n_elements = pos;
     *n_cols = seqid;
     return 0;
