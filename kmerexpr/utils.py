@@ -1,4 +1,3 @@
-from mimetypes import init
 import os
 import numpy as np
 import pickle
@@ -8,6 +7,63 @@ from dataclasses import dataclass, asdict
 from kmerexpr import multinomial_model as mm
 from kmerexpr import multinomial_simplex_model as msm
 import hashlib
+
+from numba import njit, prange
+from sparse_dot_mkl import dot_product_mkl
+
+
+@njit(parallel=True, fastmath=True)
+def _a_dot_logb(a, b):
+    res = 0.0
+    for i in prange(len(a)):
+        res += a[i] * np.log(b[i])
+
+    return res
+
+@njit(parallel=True, fastmath=True)
+def _zero(arr):
+    for i in prange(len(arr)):
+        arr[i] = 0.
+
+
+@njit(parallel=True, fastmath=True)
+def _divide(a, b, c):
+    for i in prange(len(a)):
+        c[i] = a[i] / b[i]
+
+
+def logp_grad(theta, beta, xnnz, ynnz, scratch, nograd=False):
+    """Return negative log density and its gradient evaluated at the specified simplex.
+
+       loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+       grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
+    Keyword arguments:
+    theta -- simplex of expected isoform proportions
+    """
+    theta = theta.astype(np.float32)
+    mask = theta > 0
+    thetamask = theta[mask]
+    scratch.resize(xnnz.shape[0])
+
+    xthetannz = scratch
+    _zero(xthetannz)
+    dot_product_mkl(xnnz, theta, out=xthetannz)
+    val = _a_dot_logb(ynnz, scratch)
+    if beta != 1.0:
+        val += (beta - 1.0) * np.sum(np.log(thetamask/self.lengths[mask]))
+        val -= (beta - 1.0) * np.log(np.sum(thetamask/self.lengths[mask]))
+
+    if nograd:
+        return val
+
+    yxTtheta = scratch
+    _divide(ynnz, yxTtheta, yxTtheta)
+    grad = dot_product_mkl(yxTtheta, xnnz)
+    if beta != 1.0:
+        grad[mask] += (beta - 1.0) / thetamask
+        grad[mask] -= (beta - 1.0) / (np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
+
+    return val, grad
 
 
 @dataclass(frozen=True)

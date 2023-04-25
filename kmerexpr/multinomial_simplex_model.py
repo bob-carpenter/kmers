@@ -3,27 +3,7 @@ from scipy.sparse.linalg import lsqr
 from kmerexpr.exp_grad_solver import exp_grad_solver
 from kmerexpr.mg import mg
 from kmerexpr.transcriptome_reader import load_xy
-from numba import njit, prange
-from sparse_dot_mkl import dot_product_mkl
-
-@njit(parallel=True, fastmath=True)
-def _a_dot_logb(a, b):
-    res = 0.0
-    for i in prange(len(a)):
-        res += a[i] * np.log(b[i])
-
-    return res
-
-@njit(parallel=True, fastmath=True)
-def _zero(arr):
-    for i in prange(len(arr)):
-        arr[i] = 0.
-
-
-@njit(parallel=True, fastmath=True)
-def _divide(a, b, c):
-    for i in prange(len(a)):
-        c[i] = a[i] / b[i]
+import kmerexpr.utils as utils
 
 
 # BMW: Class names are usually done in CamelCase style
@@ -101,36 +81,7 @@ class multinomial_simplex_model:
             self.lengths = np.ones(x_cols)
         self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
 
-    def logp_grad(self, theta=None, batch=None, nograd=False):
-        """Return negative log density and its gradient evaluated at the
-        specified simplex.
-         loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
-         grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
-        Keyword arguments:
-        theta -- simplex of expected isoform proportions
-        """
-        mask = theta > 0
-        thetamask = theta[mask]
-        xthetannz = self.xnnz.dot(theta)
-        functionValue = self.ynnz.dot(np.log(xthetannz))
-        functionValue += (self.beta - 1.0) * np.sum(
-            np.log(thetamask / self.lengths[mask])
-        )
-        functionValue -= (self.beta - 1.0) * np.log(
-            np.sum(thetamask / self.lengths[mask])
-        )
-        if nograd:
-            return functionValue
-        # gradient computation
-        yxTtheta = self.ynnz / xthetannz
-        gradient = yxTtheta @ (self.xnnz)  # x[ymask].T.dot(yxTtheta)
-        gradient[mask] += (self.beta - 1.0) / thetamask
-        gradient[mask] -= (self.beta - 1.0) / (
-            np.sum(thetamask / self.lengths[mask]) * self.lengths[mask]
-        )
-        return functionValue, gradient
-
-    def logp_grad_fast(self, theta, batch=None, nograd=False):
+    def logp_grad(self, theta, nograd=False):
         """Return negative log density and its gradient evaluated at the specified simplex.
 
            loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
@@ -138,26 +89,7 @@ class multinomial_simplex_model:
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
-        theta = theta.astype(np.float32)
-        mask = theta > 0
-        thetamask = theta[mask]
-
-        xthetannz = self.scratch
-        _zero(xthetannz)
-        dot_product_mkl(self.xnnz, theta, out=xthetannz)
-        val = _a_dot_logb(self.ynnz, self.scratch)
-        val += (self.beta - 1.0) * np.sum(np.log(thetamask/self.lengths[mask]))
-        val -= (self.beta - 1.0) * np.log(np.sum(thetamask/self.lengths[mask]))
-        if nograd:
-            return val
-
-        yxTtheta = self.scratch
-        _divide(self.ynnz, yxTtheta, yxTtheta)
-        grad = dot_product_mkl(self.scratch, self.xnnz)
-        grad[mask] += (self.beta - 1.0) / thetamask
-        grad[mask] -= (self.beta - 1.0) / (np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
-
-        return val, grad
+        return utils.logp_grad(theta, self.beta, self.xnnz, self.ynnz, self.scratch, nograd=nograd)
 
     def initialize_iterates_uniform(self, lengths=None):
         # should use beta and dichlet to initialize? Instead of always uniform?
@@ -197,10 +129,10 @@ class multinomial_simplex_model:
                 theta0 = self.initialize_iterates_uniform()
 
         if opt_method == "mg":
-            dict_sol = mg(self.logp_grad_fast, theta0, tol=tol, max_iter=n_iters)
+            dict_sol = mg(self.logp_grad, theta0, tol=tol, max_iter=n_iters)
         else:
             dict_sol = exp_grad_solver(
-                self.logp_grad_fast,
+                self.logp_grad,
                 theta0,
                 lrs=model_parameters.lrs,
                 tol=tol,
