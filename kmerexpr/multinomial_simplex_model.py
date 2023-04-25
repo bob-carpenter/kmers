@@ -6,7 +6,7 @@ from kmerexpr.transcriptome_reader import load_xy
 from numba import njit, prange
 from sparse_dot_mkl import dot_product_mkl
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def _a_dot_logb(a, b):
     res = 0.0
     for i in prange(len(a)):
@@ -14,13 +14,13 @@ def _a_dot_logb(a, b):
 
     return res
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def _zero(arr):
     for i in prange(len(arr)):
         arr[i] = 0.
 
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def _divide(a, b, c):
     for i in prange(len(a)):
         c[i] = a[i] / b[i]

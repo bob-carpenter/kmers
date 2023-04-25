@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 from kmerexpr.exp_grad_solver import update_records
+import time
 
 
 def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
@@ -14,6 +15,7 @@ def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
     xs = []
     iteration_counts = []
 
+    st = time.time()
     for t in range(max_iter):
         # Update theta = theta . grad/sum(theta . grad)
         param = param * grad
@@ -42,12 +44,13 @@ def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
                 iteration_counts,
             )
             if verbose:
+                dt_per_iter = 1000 * (time.time() - st) / num_steps_between_snapshot
                 print(
-                    "iter {:n} | rel. norm of grad {:f} | loss {:f} |".format(
-                        iteration_counts[-1], norm_records[-1], loss_records[-1]
+                    "iter {:n} | rel. norm of grad {:f} | loss {:f} | dt/iter (ms) {:f}".format(
+                        iteration_counts[-1], norm_records[-1], loss_records[-1], dt_per_iter
                     )
                 )
-
+                st = time.time()
 
     dict_out = {
         "x": param,
