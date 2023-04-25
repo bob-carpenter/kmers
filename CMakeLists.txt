@@ -4,7 +4,7 @@ project(
   LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 file(GLOB KMERS_SOURCES "${PROJECT_SOURCE_DIR}/src/*.cpp")
 add_library(kmers SHARED ${KMERS_SOURCES})
