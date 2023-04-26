@@ -32,7 +32,7 @@ def _divide(a, b, c):
         c[i] = a[i] / b[i]
 
 
-def logp_grad(theta, beta, xnnz, ynnz, scratch, nograd=False):
+def logp_grad(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
     """Return negative log density and its gradient evaluated at the specified simplex.
 
        loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
@@ -50,8 +50,8 @@ def logp_grad(theta, beta, xnnz, ynnz, scratch, nograd=False):
     dot_product_mkl(xnnz, theta, out=xthetannz)
     val = _a_dot_logb(ynnz, scratch)
     if beta != 1.0:
-        val += (beta - 1.0) * np.sum(np.log(thetamask/self.lengths[mask]))
-        val -= (beta - 1.0) * np.log(np.sum(thetamask/self.lengths[mask]))
+        val += (beta - 1.0) * np.sum(np.log(thetamask / lengths[mask]))
+        val -= (beta - 1.0) * np.log(np.sum(thetamask / lengths[mask]))
 
     if nograd:
         return val
@@ -61,7 +61,7 @@ def logp_grad(theta, beta, xnnz, ynnz, scratch, nograd=False):
     grad = dot_product_mkl(yxTtheta, xnnz)
     if beta != 1.0:
         grad[mask] += (beta - 1.0) / thetamask
-        grad[mask] -= (beta - 1.0) / (np.sum(thetamask/self.lengths[mask])*self.lengths[mask])
+        grad[mask] -= (beta - 1.0) / (np.sum(thetamask / lengths[mask]) * lengths[mask])
 
     return val, grad
 

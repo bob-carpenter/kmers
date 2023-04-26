@@ -1,3 +1,4 @@
+import os
 from scipy.sparse import csr_matrix, coo_matrix, save_npz, load_npz  # BSD-3
 import numpy as np  # BSD-3
 from kmerexpr.libkmers import fasta_to_kmers_sparse
@@ -14,19 +15,20 @@ def load_xy(x_file, y_file):
 
 def transcriptome_to_x_y(K, fasta_file, x_file, y_file=None, L=None,
                          max_nz=500 * 1000 * 1000,
-                         float_t=np.float32,
-                         int_t=np.int32):
+                         float_t=np.float32):
+    if not os.path.isfile(fasta_file):
+        raise FileNotFoundError("Invalid FASTA path provided")
     if L is not None:
         raise ValueError("Only L=None currently supported for fast reader")
     if float_t != np.float32:
         raise ValueError("Only float_t=np.float32 currently supported for fast reader")
-    if int_t != np.int32:
-        raise ValueError("Only int_t=np.int32 currently supported for fast reader")
+    if max_nz is None:
+        max_nz = os.stat(fasta_file).st_size
+
     print("K =", K)
     print("fasta file =", fasta_file)
     print("target x file =", x_file)
     print("float type =", float_t)
-    print("int type =", int_t)
     M = 4**K
     print("M =", M)
 

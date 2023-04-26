@@ -89,7 +89,7 @@ class multinomial_simplex_model:
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
-        return utils.logp_grad(theta, self.beta, self.xnnz, self.ynnz, self.scratch, nograd=nograd)
+        return utils.logp_grad(theta, self.beta, self.xnnz, self.ynnz, self.scratch, self.lengths, nograd=nograd)
 
     def initialize_iterates_uniform(self, lengths=None):
         # should use beta and dichlet to initialize? Instead of always uniform?
