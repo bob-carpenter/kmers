@@ -198,39 +198,43 @@ bool valid_kmer(const char *kmer, int len) {
     return true;
 }
 
-int fasta_to_kmers_sparse(const char *fname, int K, float *data, uint64_t *row_ind, uint64_t *col_ind,
+int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, float *data, uint64_t *row_ind, uint64_t *col_ind,
                           int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
-    std::fstream stream;
-    stream.open(fname, std::ios::in);
-    if (!stream)
-        return -1;
     std::fill(col_ind, col_ind + max_size, -1);
 
     int seqid = 0;
     uint64_t pos = 0;
     ThreadPool pool;
-    while (true) {
-        std::string header, sequence;
-        std::tie(header, sequence) = get_next_sequence_fasta(stream);
-        if (!header.length())
-            break;
-        if (header.find("PREDICTED") != std::string::npos)
-            continue;
+    for (int i_file; i_file < n_files; ++i_file) {
+        std::fstream stream;
+        stream.open(fnames[i_file], std::ios::in);
+        if (!stream)
+            return -1;
+        printf("processing %s\n", fnames[i_file]);
 
-        const int n_sub_seq = max_total_subseq(sequence.length(), K);
-        pool.QueueJob([K, n_sub_seq, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
-            fill_indices(K, n_sub_seq, seqid, sequence, data + pos, row_ind + pos, col_ind + pos, total_kmer_counts);
-        });
+        while (true) {
+            std::string header, sequence;
+            std::tie(header, sequence) = get_next_sequence_fasta(stream);
+            if (!header.length())
+                break;
+            if (header.find("PREDICTED") != std::string::npos)
+                continue;
 
-        pos += n_sub_seq;
-        if (pos > max_size) {
-            pool.Stop();
-            return -2;
+            const int n_sub_seq = max_total_subseq(sequence.length(), K);
+            pool.QueueJob([K, n_sub_seq, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
+                fill_indices(K, n_sub_seq, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
+                             total_kmer_counts);
+            });
+
+            pos += n_sub_seq;
+            if (pos > max_size) {
+                pool.Stop();
+                return -2;
+            }
+
+            seqid++;
         }
-
-        seqid++;
     }
-
     pool.Stop();
 
     *nnz = remove_invalid_elements(pos, data, row_ind, col_ind);
