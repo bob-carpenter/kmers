@@ -59,6 +59,7 @@ class multinomial_simplex_model:
         )  # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
         self.xnnz = x[self.ymask]
+        self.qnnz = self.ynnz / np.sum(self.ynnz)  #normalize to probabilities
         self.N = np.sum(y)
         self.beta = beta
         self.name = "mirror"
@@ -89,7 +90,7 @@ class multinomial_simplex_model:
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
-        return utils.logp_grad(theta, self.beta, self.xnnz, self.ynnz, self.scratch, self.lengths, nograd=nograd)
+        return utils.logp_grad(theta, self.beta, self.xnnz, self.qnnz, self.scratch, self.lengths, nograd=nograd)
 
     def initialize_iterates_uniform(self, lengths=None):
         # should use beta and dichlet to initialize? Instead of always uniform?

@@ -3,6 +3,7 @@ import numpy as np
 from kmerexpr.exp_grad_solver import update_records
 import time
 
+## Code copied from Fred Kunster's kmer_solver_comparison
 
 def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
     """The Multiplicative Gradient algorithm."""
@@ -17,9 +18,9 @@ def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
 
     st = time.time()
     for t in range(max_iter):
-        # Update theta = theta . grad/sum(theta . grad)
+        # Update theta = theta * grad  
+        # Note: Removed normalization param = param / np.sum(param) since now expect ynnz to be normalized
         param = param * grad
-        param = param / np.sum(param)
 
         obj, grad = logp_grad(param)
 
