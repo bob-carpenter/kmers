@@ -48,7 +48,6 @@ class ThreadPool {
         threads.clear();
     };
 
-
     int n_jobs() const { return jobs.size(); }
 
   private:
@@ -198,10 +197,12 @@ bool valid_kmer(const char *kmer, int len) {
     return true;
 }
 
-int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, float *data, uint64_t *row_ind,
+int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
                                      uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz,
                                      int *n_cols) {
     std::fill(col_ind, col_ind + max_size, -1);
+    if (L <= 0)
+        L = std::numeric_limits<int>::max();
 
     uint64_t pos = 0;
     ThreadPool pool;
@@ -222,6 +223,8 @@ int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, f
                 continue;
             sequence += subseq;
         }
+        if (sequence.length() < L)
+            continue;
 
         const int max_kmers = max_total_kmers(sequence.length(), K);
         pool.QueueJob([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
@@ -241,9 +244,11 @@ int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, f
     return 0;
 }
 
-int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, float *data, uint64_t *row_ind, uint64_t *col_ind,
-                          int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
+int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
+                          uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
     std::fill(col_ind, col_ind + max_size, -1);
+    if (L <= 0)
+        L = std::numeric_limits<int>::max();
 
     int seqid = 0;
     uint64_t pos = 0;
@@ -261,6 +266,8 @@ int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, float *data,
             if (!header.length())
                 break;
             if (header.find("PREDICTED") != std::string::npos)
+                continue;
+            if (sequence.length() < L)
                 continue;
 
             const int max_kmers = max_total_kmers(sequence.length(), K);
@@ -285,9 +292,12 @@ int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, float *data,
     return 0;
 }
 
-int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, float *data, uint64_t *row_ind, uint64_t *col_ind,
-                          int *total_kmer_counts, uint64_t max_size, uint64_t *n_elements, int *n_cols) {
+int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, int L, float *data, uint64_t *row_ind,
+                          uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *n_elements,
+                          int *n_cols) {
     std::fill(col_ind, col_ind + max_size, std::numeric_limits<uint64_t>::max());
+    if (L <= 0)
+        L = std::numeric_limits<int>::max();
 
     uint64_t pos = 0;
     ThreadPool pool;
@@ -295,6 +305,9 @@ int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, float *data, 
         printf("processing %s\n", fname[seqid]);
         std::string sequence = get_sequence_fastq(fname[seqid]);
         const int max_kmers = max_total_kmers(sequence.length(), K);
+
+        if (sequence.length() < L)
+            continue;
 
         pool.QueueJob([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
             fill_indices(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos, total_kmer_counts);

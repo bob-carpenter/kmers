@@ -40,6 +40,7 @@ _fasta_to_kmers_sparse.argtypes = [
     c_int,
     POINTER(c_char_p),
     c_int,
+    c_int,
     POINTER(c_float),
     POINTER(c_uint64),
     POINTER(c_uint64),
@@ -54,6 +55,7 @@ _fasta_to_kmers_sparse_cat_subseq.restype = c_int
 _fasta_to_kmers_sparse_cat_subseq.argtypes = [
     c_int,
     POINTER(c_char_p),
+    c_int,
     c_int,
     POINTER(c_float),
     POINTER(c_uint64),
@@ -70,6 +72,7 @@ _fastq_to_kmers_sparse.argtypes = [
     c_int,
     POINTER(c_char_p),
     c_int,
+    c_int,
     POINTER(c_float),
     POINTER(c_uint64),
     POINTER(c_uint64),
@@ -80,18 +83,21 @@ _fastq_to_kmers_sparse.argtypes = [
 ]
 
 
-
-def fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=False):
-    if isinstance(fasta_files, str):
-        fasta_files = [fasta_files]
-
+def _get_total_size(files):
     tot_size = 0
-    for file in fasta_files:
+    for file in files:
         if not os.path.isfile(file):
             raise FileNotFoundError("Invalid FASTA path provided")
         tot_size += os.stat(file).st_size
+    return tot_size
 
-    if max_nz is None:
+
+def fasta_to_kmers_sparse(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
+    if isinstance(fasta_files, str):
+        fasta_files = [fasta_files]
+
+    tot_size = _get_total_size(fasta_files)
+    if max_nz == 0:
         max_nz = tot_size
 
     M = 4**K
@@ -109,6 +115,7 @@ def fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=False):
         failed = _fasta_to_kmers_sparse_cat_subseq(len(fasta_files),
                                                    files,
                                                    K,
+                                                   L,
                                                    data.ctypes.data_as(POINTER(c_float)),
                                                    row_ind.ctypes.data_as(POINTER(c_uint64)),
                                                    col_ind.ctypes.data_as(POINTER(c_uint64)),
@@ -121,6 +128,7 @@ def fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=False):
         failed = _fasta_to_kmers_sparse(len(fasta_files),
                                         files,
                                         K,
+                                        L,
                                         data.ctypes.data_as(POINTER(c_float)),
                                         row_ind.ctypes.data_as(POINTER(c_uint64)),
                                         col_ind.ctypes.data_as(POINTER(c_uint64)),
@@ -145,7 +153,11 @@ def fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=False):
 
 
 
-def fastq_to_kmers_sparse(fastq_files, K, max_nz):
+def fastq_to_kmers_sparse(fastq_files, K, max_nz=0, L=0):
+    tot_size = _get_total_size(fastq_files)
+    if max_nz == 0:
+        max_nz = tot_size
+
     M = 4**K
     data = np.zeros(max_nz, dtype=np.float32)
     row_ind = np.zeros(max_nz, dtype=np.uint64)
@@ -160,6 +172,7 @@ def fastq_to_kmers_sparse(fastq_files, K, max_nz):
     failed = _fastq_to_kmers_sparse(len(fastq_files),
                                     files,
                                     K,
+                                    L,
                                     data.ctypes.data_as(POINTER(c_float)),
                                     row_ind.ctypes.data_as(POINTER(c_uint64)),
                                     col_ind.ctypes.data_as(POINTER(c_uint64)),
