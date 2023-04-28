@@ -66,6 +66,34 @@ def _get_interface_layer() -> int:
         code += 2
     return code
 
+def logp_grad_ref(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
+    """Return negative log density and its gradient evaluated at the
+    specified simplex.
+     loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+     grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
+    Keyword arguments:
+    theta -- simplex of expected isoform proportions
+    """
+    mask = theta > 0
+    thetamask = theta[mask]
+    xthetannz = xnnz.dot(theta)
+    functionValue = ynnz.dot(np.log(xthetannz))
+    functionValue += (beta - 1.0) * np.sum(
+        np.log(thetamask / lengths[mask])
+    )
+    functionValue -= (beta - 1.0) * np.log(
+        np.sum(thetamask / lengths[mask])
+    )
+    if nograd:
+        return functionValue
+    # gradient computation
+    yxTtheta = ynnz / xthetannz
+    gradient = yxTtheta @ (xnnz)  # x[ymask].T.dot(yxTtheta)
+    gradient[mask] += (beta - 1.0) / thetamask
+    gradient[mask] -= (beta - 1.0) / (
+        np.sum(thetamask / lengths[mask]) * lengths[mask]
+    )
+    return functionValue, gradient
 
 def logp_grad(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
     """Return negative log density and its gradient evaluated at the specified simplex.
