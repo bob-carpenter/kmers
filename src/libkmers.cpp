@@ -20,23 +20,23 @@
 
 class ThreadPool {
   public:
-    ThreadPool() { Start(); }
-    ~ThreadPool() { Stop(); }
+    ThreadPool() { start(); }
+    ~ThreadPool() { stop(); }
 
-    void Start() {
+    void start() {
         const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
         threads.resize(num_threads);
         for (uint32_t i = 0; i < num_threads; i++)
             threads.at(i) = std::thread([this]() { this->ThreadLoop(); });
     }
-    void QueueJob(const std::function<void()> &job) {
+    void queue_job(const std::function<void()> &job) {
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             jobs.push(job);
         }
         mutex_condition.notify_one();
     }
-    void Stop() {
+    void stop() {
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             should_terminate = true;
@@ -225,17 +225,17 @@ int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, i
             continue;
 
         const int max_kmers = max_total_kmers(sequence.length(), K);
-        pool.QueueJob([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
+        pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
             fill_indices(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos, total_kmer_counts);
         });
 
         pos += max_kmers;
         if (pos > max_size) {
-            pool.Stop();
+            pool.stop();
             return -2;
         }
     }
-    pool.Stop();
+    pool.stop();
 
     *nnz = remove_invalid_elements(pos, data, row_ind, col_ind);
     *n_cols = n_files;
@@ -267,21 +267,21 @@ int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, int L, float
                 continue;
 
             const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.QueueJob([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
+            pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
                 fill_indices(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
                              total_kmer_counts);
             });
 
             pos += max_kmers;
             if (pos > max_size) {
-                pool.Stop();
+                pool.stop();
                 return -2;
             }
 
             seqid++;
         }
     }
-    pool.Stop();
+    pool.stop();
 
     *nnz = remove_invalid_elements(pos, data, row_ind, col_ind);
     *n_cols = seqid;
@@ -303,14 +303,14 @@ int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, int L, float 
         if (sequence.length() < L)
             continue;
 
-        pool.QueueJob([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
+        pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
             fill_indices(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos, total_kmer_counts);
         });
 
         pos += max_kmers;
     }
 
-    pool.Stop();
+    pool.stop();
     pos = remove_invalid_elements(pos, data, row_ind, col_ind);
 
     *n_elements = pos;
