@@ -57,7 +57,7 @@ def mkl_interface(index_type=np.int64):
     _libmkl_rt.MKL_Set_Interface_Layer(old_interface)
 
 
-def _get_interface_layer() -> str:
+def _get_interface_layer() -> int:
     code: int = 0
     env: str = os.environ.get('MKL_INTERFACE_LAYER', "")
     if 'ILP64' in env:
