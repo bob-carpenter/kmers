@@ -14,7 +14,7 @@ import scipy
 random.seed(42)
 
 model_parameters = Model_Parameters(
-    model_type="simplex", solver_name="exp_grad", lrs="warmstart"
+    model_type="simplex", solver_name="mg"
 )
 problem = Problem(filename="test5.fsa", K=8, N=1000, L=14)
 
