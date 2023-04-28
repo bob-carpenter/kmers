@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
+import matplotlib
 import os
 import numpy as np
 from kmerexpr.utils import get_errors
-
+matplotlib.rcParams['text.usetex'] = False
 
 def plot_scatter(title, xaxis, yaxis, horizontal=False, save_path="./figures"):
     plt.scatter(xaxis, yaxis, s=5, alpha=0.4)  # theta_opt
@@ -10,6 +11,7 @@ def plot_scatter(title, xaxis, yaxis, horizontal=False, save_path="./figures"):
         title = title + "-psi-minus-scatter"
         plt.plot([0, np.max(xaxis)], [0, 0], "--")
         plt.ylabel(r"$ \psi^{opt} - \psi^{*}$", fontsize=25)
+
     else:
         max_scal = np.max([np.max(xaxis), np.max(yaxis)])
         title = title + "-psi-scatter"
@@ -36,7 +38,6 @@ def plot_general(
     fontsize=30,
     miny=10000,
 ):
-    plt.rc("text", usetex=True)
     plt.rc("font", family="sans-serif")
     palette = [
         "#377eb8",
@@ -189,7 +190,6 @@ def plot_general_test(
     miny=10000,
 ):
     ax = plt.gca()
-    plt.rc("text", usetex=True)
     plt.rc("font", family="sans-serif")
     # ax.figure(figsize=(9, 8), dpi=1200)
     palette = [

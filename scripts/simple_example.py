@@ -46,9 +46,6 @@ theta_true = dict_simulation["theta_true"]
 theta_sampled = dict_simulation["theta_sampled"]
 psi_true = dict_simulation["psi"]
 
-import pdb
-
-pdb.set_trace()
 title = get_plot_title(problem, model_parameters)
 if model_parameters.model_type == "simplex":
     title_errors = title + "-theta-errors-"
