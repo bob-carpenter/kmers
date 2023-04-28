@@ -201,8 +201,6 @@ int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, i
                                      uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz,
                                      int *n_cols) {
     std::fill(col_ind, col_ind + max_size, -1);
-    if (L <= 0)
-        L = std::numeric_limits<int>::max();
 
     uint64_t pos = 0;
     ThreadPool pool;
@@ -247,8 +245,6 @@ int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, i
 int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
                           uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
     std::fill(col_ind, col_ind + max_size, -1);
-    if (L <= 0)
-        L = std::numeric_limits<int>::max();
 
     int seqid = 0;
     uint64_t pos = 0;
@@ -296,8 +292,6 @@ int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, int L, float 
                           uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *n_elements,
                           int *n_cols) {
     std::fill(col_ind, col_ind + max_size, std::numeric_limits<uint64_t>::max());
-    if (L <= 0)
-        L = std::numeric_limits<int>::max();
 
     uint64_t pos = 0;
     ThreadPool pool;
