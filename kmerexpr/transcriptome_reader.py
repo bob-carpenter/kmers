@@ -1,4 +1,3 @@
-import os
 from scipy.sparse import csr_matrix, coo_matrix, save_npz, load_npz  # BSD-3
 import numpy as np  # BSD-3
 from kmerexpr.libkmers import fasta_to_kmers_sparse

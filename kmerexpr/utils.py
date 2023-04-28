@@ -11,6 +11,17 @@ import hashlib
 from numba import njit, prange
 from sparse_dot_mkl import dot_product_mkl
 
+from contextlib import contextmanager
+from ctypes import CDLL, c_int
+from ctypes.util import find_library
+
+_libmkl_rt_path = find_library('mkl_rt')
+_libmkl_rt = CDLL(_libmkl_rt_path)
+
+_libmkl_rt.MKL_Set_Interface_Layer
+_libmkl_rt.MKL_Set_Interface_Layer.restype = c_int
+_libmkl_rt.MKL_Set_Interface_Layer.argtypes = [c_int]
+
 
 @njit(parallel=True, fastmath=True)
 def _a_dot_logb(a, b):
@@ -32,6 +43,30 @@ def _divide(a, b, c):
         c[i] = a[i] / b[i]
 
 
+@contextmanager
+def mkl_interface(index_type=np.int64):
+    assert index_type == np.int64 or index_type == np.int32
+    # LP64 if int32 indices, else ILP64
+    index_code = 0 if index_type == np.int32 else 1
+    old_interface = _get_interface_layer()
+    if old_interface >= 2:  # GNU
+        index_code += 2
+
+    _libmkl_rt.MKL_Set_Interface_Layer(index_code)
+    yield
+    _libmkl_rt.MKL_Set_Interface_Layer(old_interface)
+
+
+def _get_interface_layer() -> str:
+    code: int = 0
+    env: str = os.environ.get('MKL_INTERFACE_LAYER', "")
+    if 'ILP64' in env:
+        code += 1
+    if 'GNU' in env:
+        code += 2
+    return code
+
+
 def logp_grad(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
     """Return negative log density and its gradient evaluated at the specified simplex.
 
@@ -47,23 +82,24 @@ def logp_grad(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
 
     xthetannz = scratch
     _zero(xthetannz)
-    dot_product_mkl(xnnz, theta, out=xthetannz)
-    val = _a_dot_logb(ynnz, scratch)
-    if beta != 1.0:
-        val += (beta - 1.0) * np.sum(np.log(thetamask / lengths[mask]))
-        val -= (beta - 1.0) * np.log(np.sum(thetamask / lengths[mask]))
+    with mkl_interface(xnnz.indices.dtype):
+        dot_product_mkl(xnnz, theta, out=xthetannz)
+        val = _a_dot_logb(ynnz, scratch)
+        if beta != 1.0:
+            val += (beta - 1.0) * np.sum(np.log(thetamask / lengths[mask]))
+            val -= (beta - 1.0) * np.log(np.sum(thetamask / lengths[mask]))
 
-    if nograd:
-        return val
+        if nograd:
+            return val
 
-    yxTtheta = scratch
-    _divide(ynnz, yxTtheta, yxTtheta)
-    grad = dot_product_mkl(yxTtheta, xnnz)
-    if beta != 1.0:
-        grad[mask] += (beta - 1.0) / thetamask
-        grad[mask] -= (beta - 1.0) / (np.sum(thetamask / lengths[mask]) * lengths[mask])
+        yxTtheta = scratch
+        _divide(ynnz, yxTtheta, yxTtheta)
+        grad = dot_product_mkl(yxTtheta, xnnz)
+        if beta != 1.0:
+            grad[mask] += (beta - 1.0) / thetamask
+            grad[mask] -= (beta - 1.0) / (np.sum(thetamask / lengths[mask]) * lengths[mask])
 
-    return val, grad
+        return val, grad
 
 
 @dataclass(frozen=True)
