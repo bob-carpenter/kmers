@@ -36,7 +36,6 @@ def plot_general(
     fontsize=30,
     miny=10000,
 ):
-    plt.rc("text", usetex=True)
     plt.rc("font", family="sans-serif")
     palette = [
         "#377eb8",
@@ -189,7 +188,6 @@ def plot_general_test(
     miny=10000,
 ):
     ax = plt.gca()
-    plt.rc("text", usetex=True)
     plt.rc("font", family="sans-serif")
     # ax.figure(figsize=(9, 8), dpi=1200)
     palette = [
