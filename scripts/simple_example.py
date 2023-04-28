@@ -1,15 +1,13 @@
+import os
+
 from kmerexpr import transcriptome_reader as tr
 from kmerexpr import simulate_reads as sr
 from kmerexpr.simulate_reads import length_adjustment_inverse
-from kmerexpr.rna_seq_reader import reads_to_y
-import numpy as np
-import os
 from kmerexpr.utils import load_lengths, Problem, Model_Parameters
-from kmerexpr.utils import load_simulation_parameters, load_run_result, get_plot_title
+from kmerexpr.utils import load_simulation_parameters, get_plot_title
 from kmerexpr.plotting.plots import plot_error_vs_iterations, plot_scatter
 import random
 import time
-import scipy
 
 random.seed(42)
 
@@ -25,8 +23,7 @@ READS_FILE = sr.simulate_reads(
     problem
 )  # force_repeat=True to force repeated simulation
 # Create y and X and save to file
-reads_to_y(problem.K, READS_FILE, Y_FILE=Y_FILE)
-tr.transcriptome_to_x(problem.K, ISO_FILE, X_FILE, L=problem.L)
+tr.transcriptome_to_x_y(problem.K, ISO_FILE, X_FILE, y_file=Y_FILE, L=problem.L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 

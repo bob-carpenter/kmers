@@ -49,6 +49,21 @@ _fasta_to_kmers_sparse.argtypes = [
     POINTER(c_int),
 ]
 
+_fasta_to_kmers_sparse_cat_subseq = _libkmers.fasta_to_kmers_sparse_cat_subseq
+_fasta_to_kmers_sparse_cat_subseq.restype = c_int
+_fasta_to_kmers_sparse_cat_subseq.argtypes = [
+    c_int,
+    POINTER(c_char_p),
+    c_int,
+    POINTER(c_float),
+    POINTER(c_uint64),
+    POINTER(c_uint64),
+    POINTER(c_int),
+    c_uint64,
+    POINTER(c_uint64),
+    POINTER(c_int),
+]
+
 _fastq_to_kmers_sparse = _libkmers.fastq_to_kmers_sparse
 _fastq_to_kmers_sparse.restype = c_int
 _fastq_to_kmers_sparse.argtypes = [
@@ -65,7 +80,8 @@ _fastq_to_kmers_sparse.argtypes = [
 ]
 
 
-def fasta_to_kmers_sparse(fasta_files, K, max_nz):
+
+def fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=False):
     if isinstance(fasta_files, str):
         fasta_files = [fasta_files]
 
@@ -89,17 +105,30 @@ def fasta_to_kmers_sparse(fasta_files, K, max_nz):
 
     files = (c_char_p * (len(fasta_files)))()
     files[:] = [file.encode('UTF-8') for file in fasta_files]
-    failed = _fasta_to_kmers_sparse(len(fasta_files),
-                                    files,
-                                    K,
-                                    data.ctypes.data_as(POINTER(c_float)),
-                                    row_ind.ctypes.data_as(POINTER(c_uint64)),
-                                    col_ind.ctypes.data_as(POINTER(c_uint64)),
-                                    kmer_counts.ctypes.data_as(POINTER(c_int)),
-                                    max_nz,
-                                    byref(pos),
-                                    byref(n_cols),
-                                    )
+    if concatenate_subseq:
+        failed = _fasta_to_kmers_sparse_cat_subseq(len(fasta_files),
+                                                   files,
+                                                   K,
+                                                   data.ctypes.data_as(POINTER(c_float)),
+                                                   row_ind.ctypes.data_as(POINTER(c_uint64)),
+                                                   col_ind.ctypes.data_as(POINTER(c_uint64)),
+                                                   kmer_counts.ctypes.data_as(POINTER(c_int)),
+                                                   max_nz,
+                                                   byref(pos),
+                                                   byref(n_cols),
+                                                   )
+    else:
+        failed = _fasta_to_kmers_sparse(len(fasta_files),
+                                        files,
+                                        K,
+                                        data.ctypes.data_as(POINTER(c_float)),
+                                        row_ind.ctypes.data_as(POINTER(c_uint64)),
+                                        col_ind.ctypes.data_as(POINTER(c_uint64)),
+                                        kmer_counts.ctypes.data_as(POINTER(c_int)),
+                                        max_nz,
+                                        byref(pos),
+                                        byref(n_cols),
+                                        )
     if failed == -1:
         raise RuntimeError("Failed to open FASTA file")
     if failed == -2:

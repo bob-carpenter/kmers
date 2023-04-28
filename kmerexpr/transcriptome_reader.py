@@ -15,7 +15,8 @@ def load_xy(x_file, y_file):
 
 def transcriptome_to_x_y(K, fasta_files, x_file, y_file=None, L=None,
                          max_nz=500 * 1000 * 1000,
-                         float_t=np.float32):
+                         float_t=np.float32,
+                         concatenate_subseq=False):
     if L is not None:
         raise ValueError("Only L=None currently supported for fast reader")
     if float_t != np.float32:
@@ -28,7 +29,8 @@ def transcriptome_to_x_y(K, fasta_files, x_file, y_file=None, L=None,
     M = 4**K
     print("M =", M)
 
-    data, row_ind, col_ind, kmer_counts, n_cols = fasta_to_kmers_sparse(fasta_files, K, max_nz)
+    data, row_ind, col_ind, kmer_counts, n_cols = \
+        fasta_to_kmers_sparse(fasta_files, K, max_nz, concatenate_subseq=concatenate_subseq)
 
     if y_file:
         save_npz(y_file, coo_matrix(kmer_counts), compressed=False)
