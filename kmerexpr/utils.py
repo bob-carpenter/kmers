@@ -37,11 +37,6 @@ class Model_Parameters:
     init_iterates: str = "uniform"  # options for initialize iterates
     joker: Any = False
 
-    def __post_init__(self):
-        if self.solver_name != "frank_wolfe" and self.solver_name != "exp_grad":
-            print("No solver called", self.solver_name, ". Defaulting to exp_grad")
-            self.solver_name = "exp_grad"
-
     def initialize_model(self, X_FILE, Y_FILE, lengths=None):
         if self.model_type == "softmax":
             model_class = mm.multinomial_model
