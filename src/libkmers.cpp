@@ -5,8 +5,10 @@
 #include <cinttypes>
 #include <cmath>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -18,7 +20,9 @@
 #include <unordered_map>
 #include <utility>
 
-using list_of_lists_t = std::unordered_map<uint64_t, std::vector<std::pair<uint64_t, float>>>;
+using list_of_lists_t = std::vector<std::vector<std::pair<uint64_t, float>>>;
+using coo_tup = std::tuple<uint64_t, uint64_t, float>;
+using list_of_coo = std::vector<coo_tup>;
 
 template <typename T>
 class ThreadPoolLocalData {
@@ -27,7 +31,10 @@ class ThreadPoolLocalData {
     ~ThreadPoolLocalData() { stop(); }
 
     void start() {
-        const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
+        const char *libkmer_n_threads = getenv("KMER_NUM_THREADS");
+        const uint32_t num_threads = (libkmer_n_threads == nullptr)
+                                         ? std::thread::hardware_concurrency()
+                                         : atoi(libkmer_n_threads); // Max # of threads the system supports
         threads.resize(num_threads);
         localdata.resize(num_threads);
         for (uint32_t i = 0; i < num_threads; i++) {
@@ -53,19 +60,27 @@ class ThreadPoolLocalData {
         threads.clear();
     }
 
-    T &reduce() {
-        T &res = localdata[0];
-        for (int i = 1; i < localdata.size(); ++i) {
-            for (auto &[row, val] : localdata[i]) {
-                auto row0 = res.find(row);
-                if (row0 != res.end())
-                    row0->second.insert(row0->second.end(), val.begin(), val.end());
-                else
-                    res[row] = val;
-            }
+    list_of_lists_t reduce(const uint64_t nrows) {
+        std::cout << "Reducing intermediate COO -> CSR\n";
+        list_of_lists_t res(nrows);
+        for (int i = 0; i < localdata.size(); ++i) {
+            std::cout << "Joining " << i + 1 << " of " << localdata.size() << std::endl;
+
+            for (auto &[row, col, val] : localdata[i])
+                res[row].push_back(std::make_pair(col, val));
+
             localdata[i] = {};
         }
-        return res;
+
+        uint64_t n_update = nrows / 20;
+        for (uint64_t i = 0; i < nrows; ++i) {
+            if (i % n_update == 0)
+                std::cout << "Sorting row " << i << " of " << nrows << std::endl;
+
+            auto &row = res[i];
+            std::sort(row.begin(), row.end());
+        }
+        return std::move(res);
     }
 
     int n_jobs() const { return jobs.size(); }
@@ -200,18 +215,11 @@ void fill_indices_coo(int K, int seq_total_count, int seqid, const std::string &
     }
 }
 
-void fill_indices_csr(list_of_lists_t &lil, int K, int seq_total_count, int seqid, const std::string &sequence) {
+void fill_indices_csr(list_of_coo &lil, int K, int seq_total_count, int seqid, const std::string &sequence) {
     const auto kmer_counts = collect_kmers(sequence.data(), K);
-    uint64_t i = 0;
     for (auto &[kmer, count] : kmer_counts) {
         const float data = float(count) / seq_total_count;
-        auto row = lil.find(kmer);
-        if (row != lil.end())
-            row->second.emplace_back(std::make_pair(seqid, data));
-        else
-            lil[kmer] = {std::make_pair(seqid, data)};
-
-        i++;
+        lil.push_back(std::make_tuple(kmer, seqid, data));
     }
 }
 
@@ -340,7 +348,7 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
                                   int *n_cols) {
 
     uint64_t pos = 0;
-    ThreadPoolLocalData<list_of_lists_t> pool;
+    ThreadPoolLocalData<list_of_coo> pool;
     for (int seqid; seqid < n_files; ++seqid) {
         std::fstream stream;
         stream.open(fnames[seqid], std::ios::in);
@@ -362,7 +370,7 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
             continue;
 
         const int max_kmers = max_total_kmers(sequence.length(), K);
-        pool.queue_job([K, max_kmers, seqid, sequence](list_of_lists_t &lil) {
+        pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &lil) {
             fill_indices_csr(lil, K, max_kmers, seqid, sequence);
         });
 
@@ -374,17 +382,16 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
     }
     pool.stop();
 
-    list_of_lists_t &lil_mat = pool.reduce();
     pos = 0;
     uint64_t M = std::pow(4, K);
+
+    auto lil_mat = pool.reduce(M);
     for (uint64_t i = 0; i < M; ++i) {
+        auto &row = lil_mat[i];
+
+        total_kmer_counts[i] = row.size();
         row_ind[i] = pos;
-
-        if (!lil_mat.contains(i))
-            continue;
-
-        auto &list = lil_mat.at(i);
-        for (auto &[col, val] : list) {
+        for (auto &[col, val] : row) {
             col_ind[pos] = col;
             data[pos] = val;
             pos++;
@@ -400,7 +407,7 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
                        uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
     int seqid = 0;
     uint64_t pos = 0;
-    ThreadPoolLocalData<list_of_lists_t> pool;
+    ThreadPoolLocalData<list_of_coo> pool;
     for (int i_file = 0; i_file < n_files; ++i_file) {
         std::fstream stream;
         stream.open(fnames[i_file], std::ios::in);
@@ -419,7 +426,7 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
                 continue;
 
             const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.queue_job([K, max_kmers, seqid, sequence](list_of_lists_t &lil) {
+            pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &lil) {
                 fill_indices_csr(lil, K, max_kmers, seqid, sequence);
             });
 
@@ -434,16 +441,15 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     }
     pool.stop();
 
-    list_of_lists_t &lil_mat = pool.reduce();
     pos = 0;
     uint64_t M = std::pow(4, K);
+
+    auto lil_mat = pool.reduce(M);
     for (uint64_t i = 0; i < M; ++i) {
+        auto &list = lil_mat[i];
+
+        total_kmer_counts[i] = list.size();
         row_ind[i] = pos;
-
-        if (!lil_mat.contains(i))
-            continue;
-
-        auto &list = lil_mat.at(i);
         for (auto &[col, val] : list) {
             col_ind[pos] = col;
             data[pos] = val;
