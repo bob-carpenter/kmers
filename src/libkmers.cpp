@@ -24,6 +24,21 @@ using list_of_lists_t = std::vector<std::vector<std::pair<uint64_t, float>>>;
 using coo_tup = std::tuple<uint64_t, uint64_t, float>;
 using list_of_coo = std::vector<coo_tup>;
 
+struct Timer {
+    struct timespec ts;
+    struct timespec tf;
+
+    unsigned long long tscs;
+    unsigned long long tscf;
+
+    Timer() { start(); }
+    void start() { clock_gettime(CLOCK_MONOTONIC, &ts); }
+    void stop() {
+        clock_gettime(CLOCK_MONOTONIC, &tf);
+    }
+    double elapsed() { return (tf.tv_sec - ts.tv_sec) + (tf.tv_nsec - ts.tv_nsec) * 1E-9; }
+};
+
 template <typename T>
 class ThreadPoolLocalData {
   public:
@@ -32,12 +47,11 @@ class ThreadPoolLocalData {
 
     void start() {
         const char *libkmer_n_threads = getenv("KMER_NUM_THREADS");
-        const uint32_t num_threads = (libkmer_n_threads == nullptr)
-                                         ? std::thread::hardware_concurrency()
-                                         : atoi(libkmer_n_threads); // Max # of threads the system supports
-        threads.resize(num_threads);
-        localdata.resize(num_threads);
-        for (uint32_t i = 0; i < num_threads; i++) {
+        num_threads_ = (libkmer_n_threads == nullptr) ? std::thread::hardware_concurrency()
+                                                      : atoi(libkmer_n_threads); // Max # of threads the system supports
+        threads.resize(num_threads_);
+        localdata.resize(num_threads_);
+        for (uint32_t i = 0; i < num_threads_; i++) {
             threads.at(i) = std::thread([this, i]() { this->ThreadLoop(localdata.at(i)); });
         }
     }
@@ -63,6 +77,8 @@ class ThreadPoolLocalData {
     list_of_lists_t reduce(const uint64_t nrows) {
         std::cout << "Reducing intermediate COO -> CSR\n";
         list_of_lists_t res(nrows);
+
+        Timer timer;
         for (int i = 0; i < localdata.size(); ++i) {
             std::cout << "Joining " << i + 1 << " of " << localdata.size() << std::endl;
 
@@ -71,6 +87,8 @@ class ThreadPoolLocalData {
 
             localdata[i] = {};
         }
+        timer.stop();
+        std::cout << "Joining took " << timer.elapsed() << " seconds\n";
 
         uint64_t n_update = nrows / 20;
         for (uint64_t i = 0; i < nrows; ++i) {
@@ -102,6 +120,7 @@ class ThreadPoolLocalData {
         }
     }
 
+    uint32_t num_threads_;
     bool should_terminate = false;
     std::vector<T> localdata;
     std::vector<std::thread> threads;
