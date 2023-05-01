@@ -51,9 +51,8 @@ class ThreadPoolLocalData {
                                                       : atoi(libkmer_n_threads); // Max # of threads the system supports
         threads.resize(num_threads_);
         localdata.resize(num_threads_);
-        for (uint32_t i = 0; i < num_threads_; i++) {
+        for (uint32_t i = 0; i < num_threads_; i++)
             threads.at(i) = std::thread([this, i]() { this->ThreadLoop(localdata.at(i)); });
-        }
     }
     void queue_job(const std::function<void(T &)> &job) {
         {
@@ -74,31 +73,55 @@ class ThreadPoolLocalData {
         threads.clear();
     }
 
-    list_of_lists_t reduce(const uint64_t nrows) {
+    void reduce(list_of_lists_t &res) {
+        const int nrows = res.size();
         std::cout << "Reducing intermediate COO -> CSR\n";
-        list_of_lists_t res(nrows);
 
+        threads.resize(num_threads_);
         Timer timer;
-        for (int i = 0; i < localdata.size(); ++i) {
-            std::cout << "Joining " << i + 1 << " of " << localdata.size() << std::endl;
+        const uint64_t chunk_size = nrows / num_threads_;
+        for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
+            uint64_t row_start = i_thr * chunk_size;
+            uint64_t row_end = (i_thr + 1) * chunk_size;
+            if (i_thr == num_threads_ - 1)
+                row_end = nrows;
 
-            for (auto &[row, col, val] : localdata[i])
-                res[row].push_back(std::make_pair(col, val));
-
-            localdata[i] = {};
+            threads[i_thr] = std::thread([this, &res, row_start, row_end] {
+                for (int i = 0; i < localdata.size(); ++i) {
+                    for (auto &[row, col, val] : localdata[i]) {
+                        if (row >= row_start && row < row_end)
+                            res[row].push_back(std::make_pair(col, val));
+                    }
+                }
+            });
         }
+
+        for (auto &thread : threads)
+            thread.join();
+
         timer.stop();
         std::cout << "Joining took " << timer.elapsed() << " seconds\n";
 
-        uint64_t n_update = nrows / 20;
-        for (uint64_t i = 0; i < nrows; ++i) {
-            if (i % n_update == 0)
-                std::cout << "Sorting row " << i << " of " << nrows << std::endl;
+        timer.start();
+        for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
+            uint64_t row_start = i_thr * chunk_size;
+            uint64_t row_end = (i_thr + 1) * chunk_size;
+            if (i_thr == num_threads_ - 1)
+                row_end = nrows;
 
-            auto &row = res[i];
-            std::sort(row.begin(), row.end());
+            threads[i_thr] = std::thread([&res, row_start, row_end] {
+                for (uint64_t i = row_start; i < row_end; ++i) {
+                    auto &row = res[i];
+                    std::sort(row.begin(), row.end());
+                }
+            });
         }
-        return std::move(res);
+        for (auto &thread : threads)
+            thread.join();
+        threads.clear();
+
+        timer.stop();
+        std::cout << "Sorting took " << timer.elapsed() << " seconds\n";
     }
 
     int n_jobs() const { return jobs.size(); }
@@ -404,7 +427,8 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
     pos = 0;
     uint64_t M = std::pow(4, K);
 
-    auto lil_mat = pool.reduce(M);
+    list_of_lists_t lil_mat(M);
+    pool.reduce(lil_mat);
     for (uint64_t i = 0; i < M; ++i) {
         auto &row = lil_mat[i];
 
@@ -463,7 +487,8 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     pos = 0;
     uint64_t M = std::pow(4, K);
 
-    auto lil_mat = pool.reduce(M);
+    list_of_lists_t lil_mat;
+    pool.reduce(lil_mat);
     for (uint64_t i = 0; i < M; ++i) {
         auto &list = lil_mat[i];
 
