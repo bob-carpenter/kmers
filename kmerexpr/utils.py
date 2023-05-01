@@ -52,7 +52,8 @@ def mkl_interface(index_type=np.int64):
     if old_interface >= 2:  # GNU
         index_code += 2
 
-    _libmkl_rt.MKL_Set_Interface_Layer(index_code)
+    ret = _libmkl_rt.MKL_Set_Interface_Layer(index_code)
+    assert ret == index_code
     yield
     _libmkl_rt.MKL_Set_Interface_Layer(old_interface)
 
