@@ -20,9 +20,13 @@
 #include <unordered_map>
 #include <utility>
 
-using list_of_lists_t = std::vector<std::vector<std::pair<uint64_t, float>>>;
-using coo_tup = std::tuple<uint64_t, uint64_t, float>;
-using list_of_coo = std::vector<coo_tup>;
+using lil_entry = std::pair<uint64_t, float>;
+using coo_entry = struct {
+    uint64_t row;
+    uint64_t col;
+    float data;
+};
+using list_of_coo = std::vector<coo_entry>;
 
 struct Timer {
     struct timespec ts;
@@ -33,9 +37,7 @@ struct Timer {
 
     Timer() { start(); }
     void start() { clock_gettime(CLOCK_MONOTONIC, &ts); }
-    void stop() {
-        clock_gettime(CLOCK_MONOTONIC, &tf);
-    }
+    void stop() { clock_gettime(CLOCK_MONOTONIC, &tf); }
     double elapsed() { return (tf.tv_sec - ts.tv_sec) + (tf.tv_nsec - ts.tv_nsec) * 1E-9; }
 };
 
@@ -73,55 +75,93 @@ class ThreadPoolLocalData {
         threads.clear();
     }
 
-    void reduce(list_of_lists_t &res) {
-        const int nrows = res.size();
-        std::cout << "Reducing intermediate COO -> CSR\n";
+    void to_csr(uint64_t nrows, uint64_t *row_ind, uint64_t *col_ind, float *data, int *total_kmer_counts) {
+        std::cout << "Converting intermediate COO -> CSR\n";
 
         threads.resize(num_threads_);
         Timer timer;
         const uint64_t chunk_size = nrows / num_threads_;
-        for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
-            uint64_t row_start = i_thr * chunk_size;
-            uint64_t row_end = (i_thr + 1) * chunk_size;
-            if (i_thr == num_threads_ - 1)
-                row_end = nrows;
-
-            threads[i_thr] = std::thread([this, &res, row_start, row_end] {
-                for (int i = 0; i < localdata.size(); ++i) {
-                    for (auto &[row, col, val] : localdata[i]) {
-                        if (row >= row_start && row < row_end)
-                            res[row].push_back(std::make_pair(col, val));
-                    }
-                }
+        // Pre-sort COO matrices for each thread
+        for (int i_thr = 0; i_thr < num_threads_; ++i_thr)
+            threads[i_thr] = std::thread([this, i_thr] {
+                std::sort(localdata[i_thr].begin(), localdata[i_thr].end(),
+                          [](const auto &a, const auto &b) { return a.row < b.row; });
             });
-        }
-
         for (auto &thread : threads)
             thread.join();
 
         timer.stop();
-        std::cout << "Joining took " << timer.elapsed() << " seconds\n";
+        std::cout << "Pre-sort took " << timer.elapsed() << " seconds\n";
 
         timer.start();
-        for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
-            uint64_t row_start = i_thr * chunk_size;
-            uint64_t row_end = (i_thr + 1) * chunk_size;
-            if (i_thr == num_threads_ - 1)
-                row_end = nrows;
+        std::vector<std::vector<uint64_t>> row_start_ptrs(num_threads_);
+        for (auto &vec : row_start_ptrs)
+            vec.resize(num_threads_ + 1);
+        std::vector<uint64_t> data_offsets(num_threads_ + 1);
+        for (int i_chunk = 0; i_chunk < num_threads_; ++i_chunk) {
+            uint64_t row_low = i_chunk * chunk_size;
+            uint64_t row_high = (i_chunk + 1) * chunk_size;
+            if (i_chunk == num_threads_ - 1)
+                row_high = nrows;
 
-            threads[i_thr] = std::thread([&res, row_start, row_end] {
-                for (uint64_t i = row_start; i < row_end; ++i) {
-                    auto &row = res[i];
-                    std::sort(row.begin(), row.end());
+            for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
+                auto &ld = localdata[i_thr];
+                uint64_t row_idx = row_start_ptrs[i_thr][i_chunk];
+                while (row_idx < ld.size() && ld[row_idx].row < row_high)
+                    row_idx++;
+                row_start_ptrs[i_thr][i_chunk + 1] = row_idx;
+
+                data_offsets[i_chunk + 1] += row_idx;
+            }
+        }
+        timer.stop();
+        std::cout << "Indexing took " << timer.elapsed() << " seconds\n";
+
+        timer.start();
+        for (int i_chunk = 0; i_chunk < num_threads_; ++i_chunk) {
+            threads[i_chunk] = std::thread([this, i_chunk, chunk_size, &row_start_ptrs, &data_offsets,
+                                            total_kmer_counts, row_ind, col_ind, data, nrows]() {
+                uint64_t pos = data_offsets[i_chunk];
+                std::vector<lil_entry> rowvec;
+                std::vector<uint64_t> row_ptrs(num_threads_);
+                for (int i = 0; i < num_threads_; ++i)
+                    row_ptrs[i] = row_start_ptrs[i][i_chunk];
+
+                uint64_t row_low = i_chunk * chunk_size;
+                uint64_t row_high = (i_chunk + 1) * chunk_size;
+                if (i_chunk == num_threads_ - 1)
+                    row_high = nrows;
+
+                for (uint64_t i_row = row_low; i_row < row_high; ++i_row) {
+                    rowvec.clear();
+                    for (int i = 0; i < localdata.size(); ++i) {
+                        auto &ld = localdata[i];
+                        while (row_ptrs[i] < ld.size() && ld[row_ptrs[i]].row == i_row) {
+                            auto &entry = ld[row_ptrs[i]];
+                            rowvec.push_back({entry.col, entry.data});
+                            row_ptrs[i]++;
+                        }
+                    }
+                    std::sort(rowvec.begin(), rowvec.end(),
+                              [](const auto &a, const auto &b) { return a.first < b.first; });
+
+                    total_kmer_counts[i_row] = rowvec.size();
+                    row_ind[i_row] = pos;
+                    for (auto &[col, val] : rowvec) {
+                        col_ind[pos] = col;
+                        data[pos] = val;
+                        pos++;
+                    }
                 }
             });
         }
         for (auto &thread : threads)
             thread.join();
         threads.clear();
-
         timer.stop();
-        std::cout << "Sorting took " << timer.elapsed() << " seconds\n";
+        std::cout << "Finalizing took " << timer.elapsed() << " seconds\n";
+
+        row_ind[nrows] = data_offsets[num_threads_];
     }
 
     int n_jobs() const { return jobs.size(); }
@@ -257,11 +297,11 @@ void fill_indices_coo(int K, int seq_total_count, int seqid, const std::string &
     }
 }
 
-void fill_indices_csr(list_of_coo &lil, int K, int seq_total_count, int seqid, const std::string &sequence) {
+void fill_indices_csr(list_of_coo &coo, int K, int seq_total_count, uint64_t seqid, const std::string &sequence) {
     const auto kmer_counts = collect_kmers(sequence.data(), K);
     for (auto &[kmer, count] : kmer_counts) {
         const float data = float(count) / seq_total_count;
-        lil.push_back(std::make_tuple(kmer, seqid, data));
+        coo.push_back(coo_entry{kmer, seqid, data});
     }
 }
 
@@ -412,8 +452,8 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
             continue;
 
         const int max_kmers = max_total_kmers(sequence.length(), K);
-        pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &lil) {
-            fill_indices_csr(lil, K, max_kmers, seqid, sequence);
+        pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &coo) {
+            fill_indices_csr(coo, K, max_kmers, seqid, sequence);
         });
 
         pos += max_kmers;
@@ -427,21 +467,8 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
     pos = 0;
     uint64_t M = std::pow(4, K);
 
-    list_of_lists_t lil_mat(M);
-    pool.reduce(lil_mat);
-    for (uint64_t i = 0; i < M; ++i) {
-        auto &row = lil_mat[i];
-
-        total_kmer_counts[i] = row.size();
-        row_ind[i] = pos;
-        for (auto &[col, val] : row) {
-            col_ind[pos] = col;
-            data[pos] = val;
-            pos++;
-        }
-    }
-
-    row_ind[M] = *nnz = pos;
+    pool.to_csr(M, row_ind, col_ind, data, total_kmer_counts);
+    *nnz = row_ind[M];
     *n_cols = n_files;
     return 0;
 }
@@ -469,8 +496,8 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
                 continue;
 
             const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &lil) {
-                fill_indices_csr(lil, K, max_kmers, seqid, sequence);
+            pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &coo) {
+                fill_indices_csr(coo, K, max_kmers, seqid, sequence);
             });
 
             pos += max_kmers;
@@ -487,21 +514,9 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     pos = 0;
     uint64_t M = std::pow(4, K);
 
-    list_of_lists_t lil_mat;
-    pool.reduce(lil_mat);
-    for (uint64_t i = 0; i < M; ++i) {
-        auto &list = lil_mat[i];
+    pool.to_csr(M, row_ind, col_ind, data, total_kmer_counts);
 
-        total_kmer_counts[i] = list.size();
-        row_ind[i] = pos;
-        for (auto &[col, val] : list) {
-            col_ind[pos] = col;
-            data[pos] = val;
-            pos++;
-        }
-    }
-
-    row_ind[M] = *nnz = pos;
+    *nnz = row_ind[M];
     *n_cols = seqid;
     return 0;
 }
