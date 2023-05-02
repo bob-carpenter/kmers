@@ -12,7 +12,7 @@ def load_xy(x_file, y_file):
     return x, y
 
 
-def transcriptome_to_x_y(K, fasta_files, x_file, y_file=None, L=0,
+def transcriptome_to_x_y(K, fasta_files, x_file=None, y_file=None, L=0,
                          max_nz=500 * 1000 * 1000,
                          float_t=np.float32,
                          concatenate_subseq=False):
@@ -35,4 +35,7 @@ def transcriptome_to_x_y(K, fasta_files, x_file, y_file=None, L=0,
     print("building csr_matrix")
     xt = csr_matrix((data, col_ind, row_ind), shape=(M, n_cols), dtype=float_t)
     print("saving csr matrix to file = ", x_file)
-    save_npz(x_file, xt, compressed=False)
+    if x_file:
+        save_npz(x_file, xt, compressed=False)
+
+    return xt, kmer_counts
