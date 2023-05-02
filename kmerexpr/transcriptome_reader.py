@@ -4,7 +4,11 @@ from kmerexpr.libkmers import fasta_to_kmers_csr
 
 
 def load_xy(x_file, y_file):
-    x = load_npz(x_file)
+    if isinstance(x_file, csr_matrix):
+        x = x_file
+    else:
+        x = load_npz(x_file)
+
     if isinstance(y_file, np.ndarray):
         y = y_file
     else:
