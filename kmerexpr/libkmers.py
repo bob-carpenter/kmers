@@ -42,11 +42,20 @@ _common_args = [
     POINTER(c_float),
     POINTER(c_uint64),
     POINTER(c_uint64),
-    POINTER(c_int),
     c_uint64,
     POINTER(c_uint64),
     POINTER(c_int),
 ]
+
+_fasta_count_kmers = _libkmers.fasta_count_kmers
+_fasta_count_kmers.restype = c_int
+_fasta_count_kmers.argtypes = [
+    c_int,
+    POINTER(c_char_p),
+    c_int,
+    POINTER(c_int),
+]
+
 
 _fasta_to_kmers_csr = _libkmers.fasta_to_kmers_csr
 _fasta_to_kmers_csr.restype = c_int
@@ -66,6 +75,28 @@ def _get_total_size(files):
     return tot_size
 
 
+def fasta_count_kmers(fasta_files, K):
+    if isinstance(fasta_files, str):
+        fasta_files = [fasta_files]
+    for file in fasta_files:
+        if not os.path.isfile(file):
+            raise FileNotFoundError("Invalid FASTA path provided")
+
+    M = 4**K
+    counts = np.zeros(M, dtype=np.int32)
+    files = (c_char_p * (len(fasta_files)))()
+    files[:] = [file.encode('UTF-8') for file in fasta_files]
+    failed = _fasta_count_kmers(len(fasta_files),
+                                files,
+                                K,
+                                counts.ctypes.data_as(POINTER(c_int)),
+                                )
+    if failed == -1:
+        raise RuntimeError("Failed to open FASTA file")
+
+    return counts
+
+
 def fasta_to_kmers_csr(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
     if isinstance(fasta_files, str):
         fasta_files = [fasta_files]
@@ -78,7 +109,6 @@ def fasta_to_kmers_csr(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
     data = np.zeros(max_nz, dtype=np.float32)
     col_ind = np.zeros(max_nz, dtype=np.uint64)
     row_ind = np.zeros(M + 1, dtype=np.uint64)
-    kmer_counts = np.zeros(M, dtype=np.int32)
 
     pos = c_uint64(0)
     n_cols = c_int(0)
@@ -93,7 +123,6 @@ def fasta_to_kmers_csr(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
                                                 data.ctypes.data_as(POINTER(c_float)),
                                                 row_ind.ctypes.data_as(POINTER(c_uint64)),
                                                 col_ind.ctypes.data_as(POINTER(c_uint64)),
-                                                kmer_counts.ctypes.data_as(POINTER(c_int)),
                                                 max_nz,
                                                 byref(pos),
                                                 byref(n_cols),
@@ -106,7 +135,6 @@ def fasta_to_kmers_csr(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
                                      data.ctypes.data_as(POINTER(c_float)),
                                      row_ind.ctypes.data_as(POINTER(c_uint64)),
                                      col_ind.ctypes.data_as(POINTER(c_uint64)),
-                                     kmer_counts.ctypes.data_as(POINTER(c_int)),
                                      max_nz,
                                      byref(pos),
                                      byref(n_cols),
@@ -123,4 +151,4 @@ def fasta_to_kmers_csr(fasta_files, K, max_nz=0, L=0, concatenate_subseq=False):
     data = data[0:pos]
     col_ind = col_ind[0:pos]
 
-    return data, row_ind, col_ind, kmer_counts, n_cols
+    return data, row_ind, col_ind, n_cols

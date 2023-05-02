@@ -2,9 +2,10 @@ import os
 
 from kmerexpr import transcriptome_reader as tr
 from kmerexpr import simulate_reads as sr
+from kmerexpr.libkmers import fasta_count_kmers
 from kmerexpr.simulate_reads import length_adjustment_inverse
-from kmerexpr.utils import load_lengths, Problem, Model_Parameters
-from kmerexpr.utils import load_simulation_parameters, get_plot_title
+from kmerexpr.utils import (load_lengths, Problem, Model_Parameters,
+                            load_simulation_parameters, get_plot_title)
 from kmerexpr.plotting.plots import plot_error_vs_iterations, plot_scatter
 import random
 import time
@@ -22,14 +23,16 @@ tic = time.perf_counter()
 READS_FILE = sr.simulate_reads(
     problem
 )  # force_repeat=True to force repeated simulation
+
 # Create y and X and save to file
-tr.transcriptome_to_x_y(problem.K, ISO_FILE, X_FILE, y_file=Y_FILE, L=problem.L)
+x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L)
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
+y = fasta_count_kmers(READS_FILE, problem.K)
 
 lengths = load_lengths(problem.filename, problem.N, problem.L)
 model = model_parameters.initialize_model(
-    X_FILE, Y_FILE, lengths=lengths
+    x, y, lengths=lengths
 )  # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
@@ -55,7 +58,3 @@ theta_opt = dict_results["x"]
 psi_opt = length_adjustment_inverse(theta_opt, lengths)
 plot_scatter(title, psi_opt, psi_true)
 plot_scatter(title, psi_opt, psi_opt - psi_true, horizontal=True)
-
-# Delete the data
-os.remove(X_FILE)  # delete X file
-os.remove(Y_FILE)  # delete Y file

@@ -59,9 +59,9 @@ def run_model(problem, model_parameters, n_iters=5000, force_repeat=False):
     # Need to check if y and X already exit. And if so, just load them.
     ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     tic = time.perf_counter()
-    if not os.path.exists(X_FILE) or not os.path.exists(Y_FILE) is force_repeat is True:
+    if not os.path.exists(X_FILE) or force_repeat is True:
         print("Generating ", X_FILE, Y_FILE)
-        tr.transcriptome_to_x_y(problem.K, ISO_FILE, X_FILE, Y_FILE, L=problem.L)
+        tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L)
     toc = time.perf_counter()
 
     print(f"Generated/loaded y and X  in {toc - tic:0.4f} seconds")

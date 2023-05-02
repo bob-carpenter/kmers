@@ -75,7 +75,7 @@ class ThreadPoolLocalData {
         threads.clear();
     }
 
-    void to_csr(uint64_t nrows, uint64_t *row_ind, uint64_t *col_ind, float *data, int *total_kmer_counts) {
+    void to_csr(uint64_t nrows, uint64_t *row_ind, uint64_t *col_ind, float *data) {
         std::cout << "Converting intermediate COO -> CSR\n";
 
         threads.resize(num_threads_);
@@ -125,41 +125,40 @@ class ThreadPoolLocalData {
 
         timer.start();
         for (int i_chunk = 0; i_chunk < num_threads_; ++i_chunk) {
-            threads[i_chunk] = std::thread([this, i_chunk, chunk_size, &row_start_ptrs, &data_offsets,
-                                            total_kmer_counts, row_ind, col_ind, data, nrows]() {
-                uint64_t pos = data_offsets[i_chunk];
-                std::vector<lil_entry> rowvec;
-                std::vector<uint64_t> row_ptrs(num_threads_);
-                for (int i = 0; i < num_threads_; ++i)
-                    row_ptrs[i] = row_start_ptrs[i][i_chunk];
+            threads[i_chunk] = std::thread(
+                [this, i_chunk, chunk_size, &row_start_ptrs, &data_offsets, row_ind, col_ind, data, nrows]() {
+                    uint64_t pos = data_offsets[i_chunk];
+                    std::vector<lil_entry> rowvec;
+                    std::vector<uint64_t> row_ptrs(num_threads_);
+                    for (int i = 0; i < num_threads_; ++i)
+                        row_ptrs[i] = row_start_ptrs[i][i_chunk];
 
-                uint64_t row_low = i_chunk * chunk_size;
-                uint64_t row_high = (i_chunk + 1) * chunk_size;
-                if (i_chunk == num_threads_ - 1)
-                    row_high = nrows;
+                    uint64_t row_low = i_chunk * chunk_size;
+                    uint64_t row_high = (i_chunk + 1) * chunk_size;
+                    if (i_chunk == num_threads_ - 1)
+                        row_high = nrows;
 
-                for (uint64_t i_row = row_low; i_row < row_high; ++i_row) {
-                    rowvec.clear();
-                    for (int i = 0; i < localdata.size(); ++i) {
-                        auto &ld = localdata[i];
-                        while (row_ptrs[i] < ld.size() && ld[row_ptrs[i]].row == i_row) {
-                            auto &entry = ld[row_ptrs[i]];
-                            rowvec.push_back({entry.col, entry.data});
-                            row_ptrs[i]++;
+                    for (uint64_t i_row = row_low; i_row < row_high; ++i_row) {
+                        rowvec.clear();
+                        for (int i = 0; i < localdata.size(); ++i) {
+                            auto &ld = localdata[i];
+                            while (row_ptrs[i] < ld.size() && ld[row_ptrs[i]].row == i_row) {
+                                auto &entry = ld[row_ptrs[i]];
+                                rowvec.push_back({entry.col, entry.data});
+                                row_ptrs[i]++;
+                            }
+                        }
+                        std::sort(rowvec.begin(), rowvec.end(),
+                                  [](const auto &a, const auto &b) { return a.first < b.first; });
+
+                        row_ind[i_row] = pos;
+                        for (auto &[col, val] : rowvec) {
+                            col_ind[pos] = col;
+                            data[pos] = val;
+                            pos++;
                         }
                     }
-                    std::sort(rowvec.begin(), rowvec.end(),
-                              [](const auto &a, const auto &b) { return a.first < b.first; });
-
-                    total_kmer_counts[i_row] = rowvec.size();
-                    row_ind[i_row] = pos;
-                    for (auto &[col, val] : rowvec) {
-                        col_ind[pos] = col;
-                        data[pos] = val;
-                        pos++;
-                    }
-                }
-            });
+                });
         }
         for (auto &thread : threads)
             thread.join();
@@ -201,7 +200,7 @@ class ThreadPoolLocalData {
 class ThreadPool {
   public:
     ThreadPool() { start(); }
-    ~ThreadPool() { stop(); }
+    ~ThreadPool() { finalize(); }
 
     void start() {
         const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
@@ -216,7 +215,7 @@ class ThreadPool {
         }
         mutex_condition.notify_one();
     }
-    void stop() {
+    void finalize() {
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             should_terminate = true;
@@ -237,7 +236,7 @@ class ThreadPool {
             {
                 std::unique_lock<std::mutex> lock(queue_mutex);
                 mutex_condition.wait(lock, [this] { return !jobs.empty() || should_terminate; });
-                if (should_terminate)
+                if (jobs.empty() && should_terminate)
                     return;
 
                 job = jobs.front();
@@ -290,19 +289,6 @@ std::unordered_map<uint32_t, uint32_t> collect_kmers(const std::string &sequence
     return std::move(kmer_counts);
 }
 
-void fill_indices_coo(int K, int seq_total_count, int seqid, const std::string &sequence, float *data,
-                      uint64_t *row_ind, uint64_t *col_ind, int *total_kmer_counts) {
-    const auto kmer_counts = collect_kmers(sequence.data(), K);
-    uint64_t i = 0;
-    for (auto &[kmer, count] : kmer_counts) {
-        data[i] = float(count) / seq_total_count;
-        row_ind[i] = kmer;
-        col_ind[i] = seqid;
-        atomic_increment(total_kmer_counts, kmer);
-        i++;
-    }
-}
-
 void fill_indices_csr(list_of_coo &coo, int K, int seq_total_count, uint64_t seqid, const std::string &sequence) {
     const auto kmer_counts = collect_kmers(sequence.data(), K);
     for (auto &[kmer, count] : kmer_counts) {
@@ -329,20 +315,18 @@ std::pair<std::string, std::string> get_next_sequence_fasta(std::iostream &strea
     return std::make_pair(std::move(header), std::move(sequence));
 }
 
-inline int max_total_kmers(int L, int K) { return (L < K) ? 0 : L - K + 1; }
-
-uint64_t remove_invalid_elements(uint64_t len, float *data, uint64_t *row_ind, uint64_t *col_ind) {
-    uint64_t nnz = 0;
-    for (uint64_t i = 0; i < len; ++i) {
-        if (col_ind[i] != std::numeric_limits<uint64_t>::max()) {
-            row_ind[nnz] = row_ind[i];
-            col_ind[nnz] = col_ind[i];
-            data[nnz] = data[i];
-            nnz++;
+void count_kmers(int K, const std::string &sequence, int *kmer_counts) {
+    for (int i = 0; i < sequence.length() - K + 1; ++i) {
+        if (!valid_kmer(sequence.data() + i, K))
+            continue;
+        else {
+            auto id = kmer_to_id(sequence.data() + i, K);
+            atomic_increment(kmer_counts, id);
         }
     }
-    return nnz;
 }
+
+inline int max_total_kmers(int L, int K) { return (L < K) ? 0 : L - K + 1; }
 
 extern "C" {
 uint32_t kmer_to_id(const char *kmer, int len) {
@@ -363,8 +347,7 @@ bool valid_kmer(const char *kmer, int len) {
 }
 
 int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
-                                  uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz,
-                                  int *n_cols) {
+                                  uint64_t *col_ind, uint64_t max_size, uint64_t *nnz, int *n_cols) {
 
     ThreadPoolLocalData<list_of_coo> pool;
     for (int seqid; seqid < n_files; ++seqid) {
@@ -395,14 +378,46 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
     pool.finalize();
 
     const uint64_t M = std::pow(4, K);
-    pool.to_csr(M, row_ind, col_ind, data, total_kmer_counts);
+    pool.to_csr(M, row_ind, col_ind, data);
     *nnz = row_ind[M];
     *n_cols = n_files;
     return 0;
 }
 
+int fasta_count_kmers(int n_files, const char *fnames[], int K, int *total_kmer_counts) {
+    int seqid = 0;
+    uint64_t pos = 0;
+
+    const uint64_t max_size = std::pow(4, K);
+    ThreadPool pool;
+    for (int i_file = 0; i_file < n_files; ++i_file) {
+        std::fstream stream;
+        stream.open(fnames[i_file], std::ios::in);
+        if (!stream)
+            return -1;
+        printf("processing %s\n", fnames[i_file]);
+
+        while (true) {
+            std::string header, sequence;
+            std::tie(header, sequence) = get_next_sequence_fasta(stream);
+            if (!header.length())
+                break;
+            if (header.find("PREDICTED") != std::string::npos)
+                continue;
+
+            const int max_kmers = max_total_kmers(sequence.length(), K);
+            pool.queue_job([K, sequence, total_kmer_counts]() { count_kmers(K, sequence, total_kmer_counts); });
+
+            seqid++;
+        }
+    }
+    pool.finalize();
+
+    return 0;
+}
+
 int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
-                       uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
+                       uint64_t *col_ind, uint64_t max_size, uint64_t *nnz, int *n_cols) {
     int seqid = 0;
     uint64_t pos = 0;
     ThreadPoolLocalData<list_of_coo> pool;
@@ -442,11 +457,10 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     pos = 0;
     uint64_t M = std::pow(4, K);
 
-    pool.to_csr(M, row_ind, col_ind, data, total_kmer_counts);
+    pool.to_csr(M, row_ind, col_ind, data);
 
     *nnz = row_ind[M];
     *n_cols = seqid;
     return 0;
 }
-
 }
