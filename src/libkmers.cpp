@@ -45,7 +45,7 @@ template <typename T>
 class ThreadPoolLocalData {
   public:
     ThreadPoolLocalData() { start(); }
-    ~ThreadPoolLocalData() { stop(); }
+    ~ThreadPoolLocalData() { finalize(); }
 
     void start() {
         const char *libkmer_n_threads = getenv("KMER_NUM_THREADS");
@@ -63,15 +63,15 @@ class ThreadPoolLocalData {
         }
         mutex_condition.notify_one();
     }
-    void stop() {
+    void finalize() {
         {
             std::unique_lock<std::mutex> lock(queue_mutex);
             should_terminate = true;
         }
         mutex_condition.notify_all();
-        for (std::thread &active_thread : threads) {
-            active_thread.join();
-        }
+        for (std::thread &thread : threads)
+            thread.join();
+
         threads.clear();
     }
 
@@ -173,7 +173,7 @@ class ThreadPoolLocalData {
             {
                 std::unique_lock<std::mutex> lock(queue_mutex);
                 mutex_condition.wait(lock, [this] { return !jobs.empty() || should_terminate; });
-                if (should_terminate)
+                if (jobs.empty() && should_terminate)
                     return;
 
                 job = jobs.front();
@@ -458,11 +458,11 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
 
         pos += max_kmers;
         if (pos > max_size) {
-            pool.stop();
+            pool.finalize();
             return -2;
         }
     }
-    pool.stop();
+    pool.finalize();
 
     pos = 0;
     uint64_t M = std::pow(4, K);
@@ -502,14 +502,14 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
 
             pos += max_kmers;
             if (pos > max_size) {
-                pool.stop();
+                pool.finalize();
                 return -2;
             }
 
             seqid++;
         }
     }
-    pool.stop();
+    pool.finalize();
 
     pos = 0;
     uint64_t M = std::pow(4, K);
