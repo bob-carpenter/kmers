@@ -429,44 +429,35 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
                                   uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz,
                                   int *n_cols) {
 
-    uint64_t pos = 0;
     ThreadPoolLocalData<list_of_coo> pool;
     for (int seqid; seqid < n_files; ++seqid) {
-        std::fstream stream;
-        stream.open(fnames[seqid], std::ios::in);
-        if (!stream)
-            return -1;
-        printf("processing %s\n", fnames[seqid]);
+        pool.queue_job([K, seqid, fnames, L](list_of_coo &coo) {
+            std::fstream stream;
+            stream.open(fnames[seqid], std::ios::in);
+            if (!stream)
+                return;
+            printf("processing %s\n", fnames[seqid]);
 
-        std::string sequence;
-        while (true) {
-            std::string header, subseq;
-            std::tie(header, subseq) = get_next_sequence_fasta(stream);
-            if (!header.length())
-                break;
-            if (header.find("PREDICTED") != std::string::npos)
-                continue;
-            sequence += subseq;
-        }
-        if (sequence.length() < L)
-            continue;
+            std::string sequence;
+            while (true) {
+                std::string header, subseq;
+                std::tie(header, subseq) = get_next_sequence_fasta(stream);
+                if (!header.length())
+                    break;
+                if (header.find("PREDICTED") != std::string::npos)
+                    continue;
+                sequence += subseq;
+            }
+            if (sequence.length() < L)
+                return;
 
-        const int max_kmers = max_total_kmers(sequence.length(), K);
-        pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &coo) {
+            const int max_kmers = max_total_kmers(sequence.length(), K);
             fill_indices_csr(coo, K, max_kmers, seqid, sequence);
         });
-
-        pos += max_kmers;
-        if (pos > max_size) {
-            pool.finalize();
-            return -2;
-        }
     }
     pool.finalize();
 
-    pos = 0;
-    uint64_t M = std::pow(4, K);
-
+    const uint64_t M = std::pow(4, K);
     pool.to_csr(M, row_ind, col_ind, data, total_kmer_counts);
     *nnz = row_ind[M];
     *n_cols = n_files;
