@@ -18,7 +18,7 @@ def mg(logp_grad, param, tol=1E-20, max_iter=2000, callback=None, verbose=True):
 
     st = time.time()
     for t in range(max_iter):
-        # Update theta = theta * grad  
+        # Update theta = theta * grad
         # Note: Removed normalization param = param / np.sum(param) since now expect ynnz to be normalized
         param = param * grad
 
