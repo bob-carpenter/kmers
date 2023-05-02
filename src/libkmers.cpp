@@ -98,22 +98,28 @@ class ThreadPoolLocalData {
         for (auto &vec : row_start_ptrs)
             vec.resize(num_threads_ + 1);
         std::vector<uint64_t> data_offsets(num_threads_ + 1);
+
         for (int i_chunk = 0; i_chunk < num_threads_; ++i_chunk) {
-            uint64_t row_low = i_chunk * chunk_size;
-            uint64_t row_high = (i_chunk + 1) * chunk_size;
-            if (i_chunk == num_threads_ - 1)
-                row_high = nrows;
+            threads[i_chunk] = std::thread([this, i_chunk, chunk_size, nrows, &row_start_ptrs, &data_offsets] {
+                uint64_t row_low = i_chunk * chunk_size;
+                uint64_t row_high = (i_chunk + 1) * chunk_size;
+                if (i_chunk == num_threads_ - 1)
+                    row_high = nrows;
 
-            for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
-                auto &ld = localdata[i_thr];
-                uint64_t row_idx = row_start_ptrs[i_thr][i_chunk];
-                while (row_idx < ld.size() && ld[row_idx].row < row_high)
-                    row_idx++;
-                row_start_ptrs[i_thr][i_chunk + 1] = row_idx;
+                for (int i_thr = 0; i_thr < num_threads_; ++i_thr) {
+                    auto &ld = localdata[i_thr];
+                    uint64_t row_idx = row_start_ptrs[i_thr][i_chunk];
+                    while (row_idx < ld.size() && ld[row_idx].row < row_high)
+                        row_idx++;
+                    row_start_ptrs[i_thr][i_chunk + 1] = row_idx;
 
-                data_offsets[i_chunk + 1] += row_idx;
-            }
+                    data_offsets[i_chunk + 1] += row_idx;
+                }
+            });
         }
+        for (auto &thread : threads)
+            thread.join();
+
         timer.stop();
         std::cout << "Indexing took " << timer.elapsed() << " seconds\n";
 
