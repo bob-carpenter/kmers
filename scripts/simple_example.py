@@ -12,17 +12,13 @@ import time
 
 random.seed(42)
 
-model_parameters = Model_Parameters(
-    model_type="simplex", solver_name="exp_grad", lrs="warmstart"
-)
-problem = Problem(filename="test5.fsa", K=8, N=1000, L=14)
+model_parameters = Model_Parameters(model_type="simplex")
+problem = Problem(filename="test5.fsa", K=8, N=5000, L=14)
 
 alpha = 0.1  # The parameter of the Dirchlet that generates readsforce_repeat = True
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
 tic = time.perf_counter()
-READS_FILE = sr.simulate_reads(
-    problem
-)  # force_repeat=True to force repeated simulation
+READS_FILE = sr.simulate_reads(problem)  # force_repeat=True to force repeated simulation
 
 # Create y and X and save to file
 x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L)
@@ -31,9 +27,7 @@ print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seco
 y = fasta_count_kmers(READS_FILE, problem.K)
 
 lengths = load_lengths(problem.filename, problem.N, problem.L)
-model = model_parameters.initialize_model(
-    x, y, lengths=lengths
-)  # initialize model. beta =1 is equivalent to no prior/regularization
+model = model_parameters.initialize_model(x, y, lengths=lengths)  # initialize model. beta =1 is equivalent to no prior/regularization
 
 tic = time.perf_counter()
 dict_results = model.fit(model_parameters, n_iters=50)
