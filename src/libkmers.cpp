@@ -344,29 +344,6 @@ uint64_t remove_invalid_elements(uint64_t len, float *data, uint64_t *row_ind, u
     return nnz;
 }
 
-std::string get_sequence_fastq(const std::string &fname) {
-    std::fstream stream;
-    stream.open(fname, std::ios::in);
-    if (!stream)
-        return "";
-
-    std::string line, sequence;
-    while (true) {
-        getline(stream, line);
-        if (!line.length() || line[0] != '@')
-            break;
-        getline(stream, line);
-        sequence += line.substr(0, line.length() - 1);
-        getline(stream, line);
-        if (!line.length() || line[0] != '+')
-            break;
-
-        getline(stream, line);
-    }
-
-    return sequence;
-}
-
 extern "C" {
 uint32_t kmer_to_id(const char *kmer, int len) {
     uint32_t i = 0;
@@ -383,52 +360,6 @@ bool valid_kmer(const char *kmer, int len) {
             return false;
 
     return true;
-}
-
-int fasta_to_kmers_sparse_cat_subseq(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
-                                     uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz,
-                                     int *n_cols) {
-    std::fill(col_ind, col_ind + max_size, -1);
-
-    uint64_t pos = 0;
-    ThreadPool pool;
-    for (int seqid; seqid < n_files; ++seqid) {
-        std::fstream stream;
-        stream.open(fnames[seqid], std::ios::in);
-        if (!stream)
-            return -1;
-        printf("processing %s\n", fnames[seqid]);
-
-        std::string sequence;
-        while (true) {
-            std::string header, subseq;
-            std::tie(header, subseq) = get_next_sequence_fasta(stream);
-            if (!header.length())
-                break;
-            if (header.find("PREDICTED") != std::string::npos)
-                continue;
-            sequence += subseq;
-        }
-        if (sequence.length() < L)
-            continue;
-
-        const int max_kmers = max_total_kmers(sequence.length(), K);
-        pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
-            fill_indices_coo(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
-                             total_kmer_counts);
-        });
-
-        pos += max_kmers;
-        if (pos > max_size) {
-            pool.stop();
-            return -2;
-        }
-    }
-    pool.stop();
-
-    *nnz = remove_invalid_elements(pos, data, row_ind, col_ind);
-    *n_cols = n_files;
-    return 0;
 }
 
 int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
@@ -518,80 +449,4 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     return 0;
 }
 
-int fasta_to_kmers_sparse(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
-                          uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *nnz, int *n_cols) {
-    std::fill(col_ind, col_ind + max_size, -1);
-
-    int seqid = 0;
-    uint64_t pos = 0;
-    ThreadPool pool;
-    for (int i_file = 0; i_file < n_files; ++i_file) {
-        std::fstream stream;
-        stream.open(fnames[i_file], std::ios::in);
-        if (!stream)
-            return -1;
-        printf("processing %s\n", fnames[i_file]);
-
-        while (true) {
-            std::string header, sequence;
-            std::tie(header, sequence) = get_next_sequence_fasta(stream);
-            if (!header.length())
-                break;
-            if (header.find("PREDICTED") != std::string::npos)
-                continue;
-            if (sequence.length() < L)
-                continue;
-
-            const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
-                fill_indices_coo(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
-                                 total_kmer_counts);
-            });
-
-            pos += max_kmers;
-            if (pos > max_size) {
-                pool.stop();
-                return -2;
-            }
-
-            seqid++;
-        }
-    }
-    pool.stop();
-
-    *nnz = remove_invalid_elements(pos, data, row_ind, col_ind);
-    *n_cols = seqid;
-    return 0;
-}
-
-int fastq_to_kmers_sparse(int n_files, const char *fname[], int K, int L, float *data, uint64_t *row_ind,
-                          uint64_t *col_ind, int *total_kmer_counts, uint64_t max_size, uint64_t *n_elements,
-                          int *n_cols) {
-    std::fill(col_ind, col_ind + max_size, std::numeric_limits<uint64_t>::max());
-
-    uint64_t pos = 0;
-    ThreadPool pool;
-    for (int seqid = 0; seqid < n_files; ++seqid) {
-        printf("processing %s\n", fname[seqid]);
-        std::string sequence = get_sequence_fastq(fname[seqid]);
-        const int max_kmers = max_total_kmers(sequence.length(), K);
-
-        if (sequence.length() < L)
-            continue;
-
-        pool.queue_job([K, max_kmers, seqid, sequence, data, row_ind, col_ind, total_kmer_counts, pos]() {
-            fill_indices_coo(K, max_kmers, seqid, sequence, data + pos, row_ind + pos, col_ind + pos,
-                             total_kmer_counts);
-        });
-
-        pos += max_kmers;
-    }
-
-    pool.stop();
-    pos = remove_invalid_elements(pos, data, row_ind, col_ind);
-
-    *n_elements = pos;
-    *n_cols = n_files;
-    return 0;
-}
 }
