@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.sparse.linalg import lsqr
-from scipy import optimize
 from kmerexpr.exp_grad_solver import exp_grad_solver
 from kmerexpr.mg import mg
-from scipy.special import softmax as softmax
-from kmerexpr.rna_seq_reader import load_xy
+from kmerexpr.transcriptome_reader import load_xy
+import kmerexpr.utils as utils
 
 
 # BMW: Class names are usually done in CamelCase style
@@ -60,6 +59,7 @@ class multinomial_simplex_model:
         )  # Need only need self.ynnz and self.xnnz. Throw away the rest?
         self.ynnz = y[self.ymask]
         self.xnnz = x[self.ymask]
+        self.qnnz = self.ynnz / np.sum(self.ynnz)  #normalize to probabilities
         self.N = np.sum(y)
         self.beta = beta
         self.name = "mirror"
@@ -80,35 +80,17 @@ class multinomial_simplex_model:
             assert len(lengths) == x_cols
         else:
             self.lengths = np.ones(x_cols)
+        self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
 
-    def logp_grad(self, theta=None, batch=None, nograd=False):
-        """Return negative log density and its gradient evaluated at the
-        specified simplex.
-         loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
-         grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
+    def logp_grad(self, theta, nograd=False):
+        """Return negative log density and its gradient evaluated at the specified simplex.
+
+           loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+           grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
         Keyword arguments:
         theta -- simplex of expected isoform proportions
         """
-        mask = theta > 0
-        thetamask = theta[mask]
-        xthetannz = self.xnnz.dot(theta)
-        functionValue = self.ynnz.dot(np.log(xthetannz))
-        functionValue += (self.beta - 1.0) * np.sum(
-            np.log(thetamask / self.lengths[mask])
-        )
-        functionValue -= (self.beta - 1.0) * np.log(
-            np.sum(thetamask / self.lengths[mask])
-        )
-        if nograd:
-            return functionValue
-        # gradient computation
-        yxTtheta = self.ynnz / xthetannz
-        gradient = yxTtheta @ (self.xnnz)  # x[ymask].T.dot(yxTtheta)
-        gradient[mask] += (self.beta - 1.0) / thetamask
-        gradient[mask] -= (self.beta - 1.0) / (
-            np.sum(thetamask / self.lengths[mask]) * self.lengths[mask]
-        )
-        return functionValue, gradient
+        return utils.logp_grad(theta, self.beta, self.xnnz, self.qnnz, self.scratch, self.lengths, nograd=nograd)
 
     def initialize_iterates_uniform(self, lengths=None):
         # should use beta and dichlet to initialize? Instead of always uniform?

@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+_skbuild/
 develop-eggs/
 dist/
 downloads/
@@ -131,6 +132,8 @@ dmypy.json
 # Editor cruft
 .vscode/
 
+# Language server
+compile_commands.json
 
 # don't check in data
 data/

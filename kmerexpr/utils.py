@@ -1,4 +1,3 @@
-from mimetypes import init
 import os
 import numpy as np
 import pickle
@@ -8,6 +7,128 @@ from dataclasses import dataclass, asdict
 from kmerexpr import multinomial_model as mm
 from kmerexpr import multinomial_simplex_model as msm
 import hashlib
+
+from numba import njit, prange
+from sparse_dot_mkl import dot_product_mkl
+
+from contextlib import contextmanager
+from ctypes import CDLL, c_int
+from ctypes.util import find_library
+
+_libmkl_rt_path = find_library('mkl_rt')
+_libmkl_rt = CDLL(_libmkl_rt_path)
+
+_libmkl_rt.MKL_Set_Interface_Layer
+_libmkl_rt.MKL_Set_Interface_Layer.restype = c_int
+_libmkl_rt.MKL_Set_Interface_Layer.argtypes = [c_int]
+
+
+@njit(parallel=True, fastmath=True)
+def _a_dot_logb(a, b):
+    res = 0.0
+    for i in prange(len(a)):
+        res += a[i] * np.log(b[i])
+
+    return res
+
+@njit(parallel=True, fastmath=True)
+def _zero(arr):
+    for i in prange(len(arr)):
+        arr[i] = 0.
+
+
+@njit(parallel=True, fastmath=True)
+def _divide(a, b, c):
+    for i in prange(len(a)):
+        c[i] = a[i] / b[i]
+
+
+@contextmanager
+def mkl_interface(index_type=np.int64):
+    assert index_type == np.int64 or index_type == np.int32
+    # LP64 if int32 indices, else ILP64
+    index_code = 0 if index_type == np.int32 else 1
+    old_interface = _get_interface_layer()
+    if old_interface >= 2:  # GNU
+        index_code += 2
+
+    ret = _libmkl_rt.MKL_Set_Interface_Layer(index_code)
+    assert ret == index_code
+    yield
+    _libmkl_rt.MKL_Set_Interface_Layer(old_interface)
+
+
+def _get_interface_layer() -> int:
+    code: int = 0
+    env: str = os.environ.get('MKL_INTERFACE_LAYER', "")
+    if 'ILP64' in env:
+        code += 1
+    if 'GNU' in env:
+        code += 2
+    return code
+
+def logp_grad_ref(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
+    """Return negative log density and its gradient evaluated at the
+    specified simplex.
+     loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+     grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
+    Keyword arguments:
+    theta -- simplex of expected isoform proportions
+    """
+    mask = theta > 0
+    thetamask = theta[mask]
+    xthetannz = xnnz.dot(theta)
+    functionValue = ynnz.dot(np.log(xthetannz))
+    functionValue += (beta - 1.0) * np.sum(
+        np.log(thetamask / lengths[mask])
+    )
+    functionValue -= (beta - 1.0) * np.log(
+        np.sum(thetamask / lengths[mask])
+    )
+    if nograd:
+        return functionValue
+    # gradient computation
+    yxTtheta = ynnz / xthetannz
+    gradient = yxTtheta @ (xnnz)  # x[ymask].T.dot(yxTtheta)
+    gradient[mask] += (beta - 1.0) / thetamask
+    gradient[mask] -= (beta - 1.0) / (
+        np.sum(thetamask / lengths[mask]) * lengths[mask]
+    )
+    return functionValue, gradient
+
+def logp_grad(theta, beta, xnnz, ynnz, scratch, lengths, nograd=False):
+    """Return negative log density and its gradient evaluated at the specified simplex.
+
+       loss(theta) = y' log(X'theta) + (beta-1 )(sum(log(theta)) - log sum (theta/Lenghts))
+       grad(theta) = X y diag{X' theta}^{-1}+ (beta-1 ) (1 - (1/Lenghts)/sum (theta/Lenghts) )
+    Keyword arguments:
+    theta -- simplex of expected isoform proportions
+    """
+    theta = theta.astype(np.float32)
+    mask = theta > 0
+    thetamask = theta[mask]
+    scratch.resize(xnnz.shape[0])
+
+    xthetannz = scratch
+    _zero(xthetannz)
+    with mkl_interface(xnnz.indices.dtype):
+        dot_product_mkl(xnnz, theta, out=xthetannz)
+        val = _a_dot_logb(ynnz, scratch)
+        if beta != 1.0:
+            val += (beta - 1.0) * np.sum(np.log(thetamask / lengths[mask]))
+            val -= (beta - 1.0) * np.log(np.sum(thetamask / lengths[mask]))
+
+        if nograd:
+            return val
+
+        yxTtheta = scratch
+        _divide(ynnz, yxTtheta, yxTtheta)
+        grad = dot_product_mkl(yxTtheta, xnnz)
+        if beta != 1.0:
+            grad[mask] += (beta - 1.0) / thetamask
+            grad[mask] -= (beta - 1.0) / (np.sum(thetamask / lengths[mask]) * lengths[mask])
+
+        return val, grad
 
 
 @dataclass(frozen=True)
@@ -36,11 +157,6 @@ class Model_Parameters:
     lrs: Any = None  # options for line search
     init_iterates: str = "uniform"  # options for initialize iterates
     joker: Any = False
-
-    def __post_init__(self):
-        if self.solver_name != "frank_wolfe" and self.solver_name != "exp_grad":
-            print("No solver called", self.solver_name, ". Defaulting to exp_grad")
-            self.solver_name = "exp_grad"
 
     def initialize_model(self, X_FILE, Y_FILE, lengths=None):
         if self.model_type == "softmax":

@@ -4,6 +4,41 @@ from os import path
 from kmerexpr import fasta
 
 
+def _de_bruijn(K: int, alphabet: str = "ACTG") -> str:
+    """de Bruijn sequence for alphabet and subsequences of length K.
+
+    Modified from: https://en.wikipedia.org/wiki/De_Bruijn_sequence#Algorithm
+    """
+    nchars = len(alphabet)
+    a = [0] * nchars * K
+    sequence = []
+
+    def db(t, p):
+        if t > K:
+            if K % p == 0:
+                sequence.extend(a[1:p + 1])
+        else:
+            a[t] = a[t - p]
+            db(t + 1, p)
+            for j in range(a[t - p] + 1, nchars):
+                a[t] = j
+                db(t + 1, t)
+
+    db(1, 1)
+    seq = "".join(alphabet[i] for i in sequence)
+    seq = seq + seq[0:K-1]
+    return seq
+
+
+def all_kmers_to_fasta(K: int, fasta_file: str):
+    seq = _de_bruijn(K)
+    seqlist = [seq[i:i+50] for i in range(0, len(seq), 50)]
+    seqlist = [f'> all possible sequences of length {K}'] + seqlist
+
+    with open(fasta_file, 'w') as f:
+        f.write('\n'.join(seqlist))
+
+
 def length_adjustment(psi, lengths):
     theta = psi * lengths
     theta = theta / theta.sum()
