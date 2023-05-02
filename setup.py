@@ -1,4 +1,5 @@
 from skbuild import setup
+from setuptools import find_packages
 from pathlib import Path
 
 this_directory = Path(__file__).parent
@@ -19,8 +20,7 @@ setup(name='kmerexpr',
       author='Bob Carpenter, Robert Gower, Robert Blackwell, and Brian Ward',
       author_email='bcarpenter@flatironinstitute.org',
       url='https://github.com/bob-carpenter/kmers',
-      packages=['kmerexpr'],
-      package_dir={'kmerexpr': 'kmerexpr'},
+      packages=find_packages(),
       install_requires=['numpy>=1.18',
                         'scipy>=1.5',
                         'sparse-dot-mkl',
