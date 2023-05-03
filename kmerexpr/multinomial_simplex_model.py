@@ -81,6 +81,8 @@ class multinomial_simplex_model:
         else:
             self.lengths = np.ones(x_cols)
         self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
+        utils.convert_index_type(self.xnnz)
+        utils.convert_index_type(self.ynnz)
 
     def logp_grad(self, theta, nograd=False):
         """Return negative log density and its gradient evaluated at the specified simplex.
