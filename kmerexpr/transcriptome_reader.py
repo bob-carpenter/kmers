@@ -20,21 +20,14 @@ def transcriptome_to_x(K: str,
                        fasta_files: list[str],
                        x_file: str = "",
                        L: int = 0,
-                       max_nz=0,
-                       float_t=np.float32,
-                       concatenate_subseq=False
+                       max_nz: int =0,
+                       float_t: type = np.float32,
+                       concatenate_subseq: bool = False,
                        ):
     if float_t != np.float32:
         raise ValueError("Only float_t=np.float32 currently supported for fast reader")
 
     M = 4**K
-
-    print(f"K = {K}")
-    print(f"fasta files = {fasta_files}")
-    print(f"target x file = {fasta_files}")
-    print(f"float type = {float_t}")
-    print(f"M = {M}")
-
     data, row_ind, col_ind, n_cols = \
         fasta_to_kmers_csr(fasta_files, K, max_nz, L=L, concatenate_subseq=concatenate_subseq)
 
