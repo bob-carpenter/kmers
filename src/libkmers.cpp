@@ -257,10 +257,9 @@ void count_kmers(int K, const std::string &sequence, int *kmer_counts) {
     for (int i = 0; i < sequence.length() - K + 1; ++i) {
         if (!valid_kmer(sequence.data() + i, K))
             continue;
-        else {
-            auto id = kmer_to_id(sequence.data() + i, K);
-            atomic_increment(kmer_counts, id);
-        }
+
+        auto id = kmer_to_id(sequence.data() + i, K);
+        atomic_increment(kmer_counts, id);
     }
 }
 
