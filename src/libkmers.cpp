@@ -265,7 +265,6 @@ void count_kmers(int K, const std::string &sequence, int *kmer_counts) {
 
 extern "C" {
 uint32_t kmer_to_id(const char *kmer, int len) {
-    uint32_t i = 0;
     uint32_t id = 0;
     for (int i = 0; i < len; ++i)
         id = id * 4 + base_ids[kmer[i]];
