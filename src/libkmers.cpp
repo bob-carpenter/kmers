@@ -27,13 +27,10 @@ using coo_entry = struct {
     float data;
 };
 using list_of_coo = std::vector<coo_entry>;
+using kmer_count_t = std::unordered_map<uint64_t, uint32_t>;
 
 struct Timer {
-    struct timespec ts;
-    struct timespec tf;
-
-    unsigned long long tscs;
-    unsigned long long tscf;
+    struct timespec ts, tf;
 
     Timer() { start(); }
     void start() { clock_gettime(CLOCK_MONOTONIC, &ts); }
@@ -197,62 +194,6 @@ class ThreadPoolLocalData {
     std::queue<std::function<void(T &)>> jobs;
 };
 
-class ThreadPool {
-  public:
-    ThreadPool() { start(); }
-    ~ThreadPool() { finalize(); }
-
-    void start() {
-        const uint32_t num_threads = std::thread::hardware_concurrency(); // Max # of threads the system supports
-        threads.resize(num_threads);
-        for (uint32_t i = 0; i < num_threads; i++)
-            threads.at(i) = std::thread([this]() { this->ThreadLoop(); });
-    }
-    void queue_job(const std::function<void()> &job) {
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            jobs.push(job);
-        }
-        mutex_condition.notify_one();
-    }
-    void finalize() {
-        {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            should_terminate = true;
-        }
-        mutex_condition.notify_all();
-        for (std::thread &active_thread : threads) {
-            active_thread.join();
-        }
-        threads.clear();
-    };
-
-    int n_jobs() const { return jobs.size(); }
-
-  private:
-    void ThreadLoop() {
-        while (true) {
-            std::function<void()> job;
-            {
-                std::unique_lock<std::mutex> lock(queue_mutex);
-                mutex_condition.wait(lock, [this] { return !jobs.empty() || should_terminate; });
-                if (jobs.empty() && should_terminate)
-                    return;
-
-                job = jobs.front();
-                jobs.pop();
-            }
-            job();
-        }
-    }
-
-    bool should_terminate = false;
-    std::vector<std::thread> threads;
-    std::mutex queue_mutex;
-    std::condition_variable mutex_condition;
-    std::queue<std::function<void()>> jobs;
-};
-
 std::array<char, 256> init_base_ids() {
     std::array<char, 256> ids;
     std::fill_n(ids.begin(), 256, -1);
@@ -272,28 +213,25 @@ inline void atomic_increment(int *arr, int index) {
     el.fetch_add(1, std::memory_order_relaxed);
 }
 
-std::unordered_map<uint32_t, uint32_t> collect_kmers(const std::string &sequence, int klen) {
-    std::unordered_map<uint32_t, uint32_t> kmer_counts;
+std::pair<kmer_count_t, uint32_t> collect_kmers(const std::string &sequence, int klen) {
+    kmer_count_t kmer_counts;
+    uint32_t total_count = 0;
+    kmer_counts.reserve(sequence.length() - klen + 1);
     for (int i = 0; i < sequence.length() - klen + 1; ++i) {
         if (!valid_kmer(sequence.data() + i, klen))
             continue;
-        else {
-            auto id = kmer_to_id(sequence.data() + i, klen);
-            auto kmer_count = kmer_counts.find(id);
-            if (kmer_count != kmer_counts.end())
-                kmer_count->second++;
-            else
-                kmer_counts[id] = 1;
-        }
+        auto id = kmer_to_id(sequence.data() + i, klen);
+        ++kmer_counts[id];
+        ++total_count;
     }
-    return std::move(kmer_counts);
+    return std::make_pair(std::move(kmer_counts), total_count);
 }
 
-void fill_indices_csr(list_of_coo &coo, int K, int seq_total_count, uint64_t seqid, const std::string &sequence) {
-    const auto kmer_counts = collect_kmers(sequence.data(), K);
+void fill_indices_coo(list_of_coo &coo, int K, uint64_t seqid, const std::string &sequence) {
+    const auto [kmer_counts, total_count] = collect_kmers(sequence.data(), K);
     for (auto &[kmer, count] : kmer_counts) {
-        const float data = float(count) / seq_total_count;
-        coo.push_back(coo_entry{kmer, seqid, data});
+        const float data = float(count) / total_count;
+        coo.emplace_back(coo_entry{kmer, seqid, data});
     }
 }
 
@@ -326,8 +264,6 @@ void count_kmers(int K, const std::string &sequence, int *kmer_counts) {
     }
 }
 
-inline int max_total_kmers(int L, int K) { return (L < K) ? 0 : L - K + 1; }
-
 extern "C" {
 uint32_t kmer_to_id(const char *kmer, int len) {
     uint32_t i = 0;
@@ -346,9 +282,40 @@ bool valid_kmer(const char *kmer, int len) {
     return true;
 }
 
+int fasta_count_kmers(int n_files, const char *fnames[], int K, int *total_kmer_counts) {
+    int seqid = 0;
+    uint64_t pos = 0;
+
+    const uint64_t max_size = std::pow(4, K);
+    ThreadPoolLocalData<int> pool;
+    for (int i_file = 0; i_file < n_files; ++i_file) {
+        std::fstream stream;
+        stream.open(fnames[i_file], std::ios::in);
+        if (!stream)
+            return -1;
+        printf("processing %s\n", fnames[i_file]);
+
+        while (true) {
+            std::string header, sequence;
+            std::tie(header, sequence) = get_next_sequence_fasta(stream);
+            if (!header.length())
+                break;
+            if (header.find("PREDICTED") != std::string::npos)
+                continue;
+
+            pool.queue_job([K, sequence, total_kmer_counts](int dum) { count_kmers(K, sequence, total_kmer_counts); });
+
+            seqid++;
+        }
+    }
+    pool.finalize();
+
+    return 0;
+}
+
 int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int L, float *data, uint64_t *row_ind,
                                   uint64_t *col_ind, uint64_t max_size, uint64_t *nnz, int *n_cols) {
-
+    Timer timer;
     ThreadPoolLocalData<list_of_coo> pool;
     for (int seqid; seqid < n_files; ++seqid) {
         pool.queue_job([K, seqid, fnames, L](list_of_coo &coo) {
@@ -371,48 +338,16 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
             if (sequence.length() < L)
                 return;
 
-            const int max_kmers = max_total_kmers(sequence.length(), K);
-            fill_indices_csr(coo, K, max_kmers, seqid, sequence);
+            fill_indices_coo(coo, K, seqid, sequence);
         });
     }
     pool.finalize();
-
+    timer.stop();
+    std::cout << "Initial processing took: " << timer.elapsed() << " seconds\n";
     const uint64_t M = std::pow(4, K);
     pool.to_csr(M, row_ind, col_ind, data);
     *nnz = row_ind[M];
     *n_cols = n_files;
-    return 0;
-}
-
-int fasta_count_kmers(int n_files, const char *fnames[], int K, int *total_kmer_counts) {
-    int seqid = 0;
-    uint64_t pos = 0;
-
-    const uint64_t max_size = std::pow(4, K);
-    ThreadPool pool;
-    for (int i_file = 0; i_file < n_files; ++i_file) {
-        std::fstream stream;
-        stream.open(fnames[i_file], std::ios::in);
-        if (!stream)
-            return -1;
-        printf("processing %s\n", fnames[i_file]);
-
-        while (true) {
-            std::string header, sequence;
-            std::tie(header, sequence) = get_next_sequence_fasta(stream);
-            if (!header.length())
-                break;
-            if (header.find("PREDICTED") != std::string::npos)
-                continue;
-
-            const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.queue_job([K, sequence, total_kmer_counts]() { count_kmers(K, sequence, total_kmer_counts); });
-
-            seqid++;
-        }
-    }
-    pool.finalize();
-
     return 0;
 }
 
@@ -438,16 +373,7 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
             if (sequence.length() < L)
                 continue;
 
-            const int max_kmers = max_total_kmers(sequence.length(), K);
-            pool.queue_job([K, max_kmers, seqid, sequence](list_of_coo &coo) {
-                fill_indices_csr(coo, K, max_kmers, seqid, sequence);
-            });
-
-            pos += max_kmers;
-            if (pos > max_size) {
-                pool.finalize();
-                return -2;
-            }
+            pool.queue_job([K, seqid, sequence](list_of_coo &coo) { fill_indices_coo(coo, K, seqid, sequence); });
 
             seqid++;
         }
