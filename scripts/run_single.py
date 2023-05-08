@@ -1,5 +1,6 @@
 from kmerexpr import transcriptome_reader as tr
 from kmerexpr import simulate_reads as sr
+from kmerexpr.libkmers import fasta_count_kmers
 import numpy as np
 import os
 from kmerexpr.utils import save_run_result

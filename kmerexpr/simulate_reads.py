@@ -51,7 +51,7 @@ def length_adjustment_inverse(theta, lengths):
     return psi
 
 
-def simulate_reads(problem, force_repeat=True):  #
+def simulate_reads(problem, READS_FILE, ISO_FILE, force_repeat=True):  #
     np.random.seed(42)
     """
     Simulates reads from a given reference isoforms.  First subsamples the isoforms (represents biological sample),
@@ -64,7 +64,6 @@ def simulate_reads(problem, force_repeat=True):  #
     problem.N = number of reads, must be greater than number of isoforms in ISO_FILE
     problem.alpha = parameter of Dirchlet distribution that generates psi
     """
-    ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
     if (
         path.exists(get_simulation_dir(problem))
         and path.exists(READS_FILE)
