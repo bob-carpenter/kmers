@@ -119,7 +119,7 @@ def simulate_reads(problem, READS_FILE, ISO_FILE, force_repeat=True):  #
             out.write("\n")
             out.write(seq[start : start + L])
             out.write("\n")
-    return READS_FILE
+    return READS_FILE, lengths
 
 
 if __name__ == "__main__":
