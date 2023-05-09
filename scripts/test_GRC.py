@@ -19,9 +19,9 @@ X_FILE = os.path.expanduser(f'/mnt/home/rblackwell/ceph/kmers/GRCh38_K{K}.npz')
 Y_FILE = os.path.expanduser(f'/mnt/home/rblackwell/ceph/kmers/GRCh38_K{K}_counts.npz')
 READS_FILE = os.path.expanduser(f'/mnt/home/rgower/ceph/kmers/GRCh38_L{L}_N{N}_READS.npz')
 
-x = tr.transcriptome_to_x(K, ISO_FILE, concatenate_subseq=True)
+x = tr.transcriptome_to_x(K, ISO_FILE, L = L)
 mask = np.array(np.sum(x,axis=1)).squeeze() == 0
-problem = Problem(filename="GRCh38.fna", K=K, N=K, L=L, alpha =0.1)
+problem = Problem(filename="GRCh38.fna", K=K, N=N, L=L, alpha =0.1)
 # Need to pass the ISO_FILE
 READS_FILE, lengths = sr.simulate_reads(problem, READS_FILE, ISO_FILE) 
 y = fasta_count_kmers(READS_FILE, problem.K)
@@ -30,7 +30,7 @@ y[mask] = 0
 params = Model_Parameters("")
 # lengths = load_lengths(problem.filename, problem.N, problem.L)
 model = params.initialize_model(x, y, lengths=lengths)  # initialize model. beta =1 is equivalent to no prior/regularization
-# import pdb; pdb.set_trace()
+
 dict_results = model.fit(params, n_iters=2000)
 
 ## Plotting and checking against ground truth

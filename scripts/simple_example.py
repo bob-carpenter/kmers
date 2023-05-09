@@ -22,6 +22,8 @@ READS_FILE = sr.simulate_reads(problem,ISO_FILE, READS_FILE)  # force_repeat=Tru
 
 # Create y and X and save to file
 x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L)
+x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L, concatenate_subseq=True)
+import pdb; pdb.set_trace()
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 y = fasta_count_kmers(READS_FILE, problem.K)

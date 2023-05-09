@@ -76,10 +76,10 @@ class multinomial_simplex_model:
         assert len(dim) == 1
         y_rows = dim[0]
         assert y_rows == x_rows
-        # if lengths is not None:   ## Only used in the bias term, which is currently not being used
-        #     assert len(lengths) == x_cols
-        # else:
-        #     self.lengths = np.ones(x_cols)
+        if lengths is not None:   ## Only used in the bias term, which is currently not being used
+            assert len(lengths) == x_cols
+        else:
+            self.lengths = np.ones(x_cols)
         self.scratch = np.zeros(self.xnnz.shape[0], dtype=self.xnnz.dtype)
         utils.convert_index_type(self.xnnz)
         utils.convert_index_type(self.ynnz)
