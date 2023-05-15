@@ -18,12 +18,10 @@ problem = Problem(filename="test5.fsa", K=8, N=5000, L=14)
 alpha = 0.1  # The parameter of the Dirchlet that generates readsforce_repeat = True
 ISO_FILE, READS_FILE, X_FILE, Y_FILE = problem.get_path_names()
 tic = time.perf_counter()
-READS_FILE = sr.simulate_reads(problem,ISO_FILE, READS_FILE)  # force_repeat=True to force repeated simulation
+READS_FILE = sr.simulate_reads(problem, READS_FILE, ISO_FILE)   # force_repeat=True to force repeated simulation
 
 # Create y and X and save to file
 x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L)
-x = tr.transcriptome_to_x(problem.K, ISO_FILE, L=problem.L, concatenate_subseq=True)
-import pdb; pdb.set_trace()
 toc = time.perf_counter()
 print(f"Created reads, counts and transciptome matrix x in {toc - tic:0.4f} seconds")
 y = fasta_count_kmers(READS_FILE, problem.K)
