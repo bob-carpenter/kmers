@@ -56,6 +56,14 @@ _fasta_count_kmers.argtypes = [
     POINTER(c_int),
 ]
 
+_fastq_gz_count_kmers = _libkmers.fastq_gz_count_kmers
+_fastq_gz_count_kmers.restype = c_int
+_fastq_gz_count_kmers.argtypes = [
+    c_int,
+    POINTER(c_char_p),
+    c_int,
+    POINTER(c_int),
+]
 
 _fasta_to_kmers_csr = _libkmers.fasta_to_kmers_csr
 _fasta_to_kmers_csr.restype = c_int
@@ -93,6 +101,28 @@ def fasta_count_kmers(fasta_files, K):
                                 )
     if failed == -1:
         raise RuntimeError("Failed to open FASTA file")
+
+    return counts
+
+
+def fastq_gz_count_kmers(fastq_files, K):
+    if isinstance(fastq_files, str):
+        fastq_files = [fastq_files]
+    for file in fastq_files:
+        if not os.path.isfile(file):
+            raise FileNotFoundError("Invalid fastq.gz path provided")
+
+    M = 4**K
+    counts = np.zeros(M, dtype=np.int32)
+    files = (c_char_p * (len(fastq_files)))()
+    files[:] = [file.encode('UTF-8') for file in fastq_files]
+    failed = _fastq_gz_count_kmers(len(fastq_files),
+                                   files,
+                                   K,
+                                   counts.ctypes.data_as(POINTER(c_int)),
+                                   )
+    if failed == -1:
+        raise RuntimeError("Failed to open FASTQ file")
 
     return counts
 

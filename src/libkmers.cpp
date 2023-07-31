@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include <zlib.h>
+
 using lil_entry = std::pair<uint64_t, float>;
 using coo_entry = struct {
     uint64_t row;
@@ -235,6 +237,68 @@ void fill_indices_coo(list_of_coo &coo, int K, uint64_t seqid, const std::string
     }
 }
 
+std::string get_sequence_fastq_gz(const std::string &fname) {
+    // Fastq format is roughly...
+    //
+    // @<sequence id>
+    // <sequence>
+    // +<identifier etc>
+    // <quality>
+    //
+    // on repeat.
+
+    gzFile infile = gzopen(fname.c_str(), "rb");
+    if (!infile) {
+        std::cerr << "Invalid file: " << fname << "\n";
+        return "";
+    }
+
+    std::string sequence;
+    int err;
+    char buff[8192];
+    char *offset = buff;
+    int n_skip = 1; // number of lines to skip before next sequence data. i.e. skip first '@' line
+    while (true) {
+        int len = sizeof(buff) - (offset - buff);
+        if (len == 0) {
+            std::cerr << "Buffer to small for input line lengths\n";
+            return "";
+        }
+
+        len = gzread(infile, offset, len);
+
+        if (len == 0)
+            break;
+        if (len < 0) {
+            std::cerr << gzerror(infile, &err);
+            return "";
+        }
+
+        char *cur = buff;
+        char *end = offset + len;
+        for (char *eol; (cur < end) && (eol = std::find(cur, end, '\n')) < end; cur = eol + 1) {
+            if (!n_skip) {
+                // Append to sequence if done skipping
+                sequence += std::string(cur, eol);
+                n_skip = 4; // actually 3, but will be subtracted in a second :)
+            }
+
+            n_skip--;
+        }
+
+        // any trailing data in [eol, end) now is a partial line. update buff/offset accordingly
+        offset = std::copy(cur, end, buff);
+    }
+    // Partial line can't be a sequence, so we're done!
+
+    if (gzclose(infile) != Z_OK) {
+        std::cerr << "failed gzclose\n";
+        return "";
+    }
+
+    return sequence;
+}
+
 std::pair<std::string, std::string> get_next_sequence_fasta(std::iostream &stream) {
     std::string line, header, sequence;
     getline(stream, header);
@@ -305,6 +369,22 @@ int fasta_count_kmers(int n_files, const char *fnames[], int K, int *total_kmer_
 
             seqid++;
         }
+    }
+    pool.finalize();
+
+    return 0;
+}
+
+int fastq_gz_count_kmers(int n_files, const char *fnames[], int K, int *total_kmer_counts) {
+    const uint64_t max_size = std::pow(4, K);
+    ThreadPoolLocalData<int> pool;
+    for (int seqid = 0; seqid < n_files; ++seqid) {
+        std::string fname = fnames[seqid];
+        pool.queue_job([K, seqid, fname, total_kmer_counts](int dum) {
+            printf("processing %s\n", fname.c_str());
+            std::string sequence = get_sequence_fastq_gz(fname);
+            count_kmers(K, sequence, total_kmer_counts);
+        });
     }
     pool.finalize();
 
@@ -387,6 +467,4 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     *n_cols = seqid;
     return 0;
 }
-
-
 }
