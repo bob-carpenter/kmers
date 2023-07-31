@@ -315,7 +315,7 @@ int fasta_to_kmers_csr_cat_subseq(int n_files, const char *fnames[], int K, int 
                                   uint64_t *col_ind, uint64_t max_size, uint64_t *nnz, int *n_cols) {
     Timer timer;
     ThreadPoolLocalData<list_of_coo> pool;
-    for (int seqid; seqid < n_files; ++seqid) {
+    for (int seqid = 0; seqid < n_files; ++seqid) {
         pool.queue_job([K, seqid, fnames, L](list_of_coo &coo) {
             std::fstream stream;
             stream.open(fnames[seqid], std::ios::in);
@@ -387,4 +387,6 @@ int fasta_to_kmers_csr(int n_files, const char *fnames[], int K, int L, float *d
     *n_cols = seqid;
     return 0;
 }
+
+
 }
